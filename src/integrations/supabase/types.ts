@@ -9,7 +9,207 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      equipment: {
+        Row: {
+          code: string
+          created_at: string
+          criticality: string | null
+          id: string
+          installation_date: string | null
+          location: string | null
+          manufacturer: string | null
+          model: string | null
+          name: string
+          status: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          criticality?: string | null
+          id?: string
+          installation_date?: string | null
+          location?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name: string
+          status?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          criticality?: string | null
+          id?: string
+          installation_date?: string | null
+          location?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name?: string
+          status?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      maintenance_plans: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          description: string | null
+          equipment_id: string | null
+          estimated_duration_hours: number | null
+          frequency_days: number | null
+          id: string
+          name: string
+          priority: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          equipment_id?: string | null
+          estimated_duration_hours?: number | null
+          frequency_days?: number | null
+          id?: string
+          name: string
+          priority?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          equipment_id?: string | null
+          estimated_duration_hours?: number | null
+          frequency_days?: number | null
+          id?: string
+          name?: string
+          priority?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_plans_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      work_orders: {
+        Row: {
+          actual_hours: number | null
+          assigned_to: string | null
+          completed_date: string | null
+          created_at: string
+          description: string | null
+          equipment_id: string | null
+          estimated_hours: number | null
+          id: string
+          maintenance_plan_id: string | null
+          priority: string | null
+          scheduled_date: string | null
+          status: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          equipment_id?: string | null
+          estimated_hours?: number | null
+          id?: string
+          maintenance_plan_id?: string | null
+          priority?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          equipment_id?: string | null
+          estimated_hours?: number | null
+          id?: string
+          maintenance_plan_id?: string | null
+          priority?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_maintenance_plan_id_fkey"
+            columns: ["maintenance_plan_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

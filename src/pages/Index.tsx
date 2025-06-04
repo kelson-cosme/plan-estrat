@@ -1,161 +1,147 @@
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Calendar, Settings, Wrench, BarChart3, AlertTriangle, CheckCircle, Clock, TrendingUp } from "lucide-react";
-import MaintenanceDashboard from "@/components/MaintenanceDashboard";
-import EquipmentManagement from "@/components/EquipmentManagement";
-import MaintenancePlans from "@/components/MaintenancePlans";
 import MaintenanceCalendar from "@/components/MaintenanceCalendar";
-import WorkOrders from "@/components/WorkOrders";
-import Reports from "@/components/Reports";
+import { LogOut, User, Wrench } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado do sistema",
+    });
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
+          <p>Carregando sistema...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect to auth
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Sistema de Manutenção Estratégica
-              </h1>
-              <p className="text-gray-600">
-                Plataforma completa para gestão de ciclos de manutenção empresarial
-              </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <Wrench className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Sistema de Manutenção</h1>
+                <p className="text-sm text-gray-600">Gestão Inteligente de Manutenção Industrial</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Sistema Ativo
-              </Badge>
-              <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                Configurações
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-600" />
+                <span className="text-sm text-gray-700">{user.email}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
               </Button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Equipamentos Ativos</p>
-                  <p className="text-2xl font-bold text-gray-900">247</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Settings className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Manutenções Pendentes</p>
-                  <p className="text-2xl font-bold text-orange-600">12</p>
-                </div>
-                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Eficiência Geral</p>
-                  <p className="text-2xl font-bold text-green-600">94.2%</p>
-                </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Alertas Críticos</p>
-                  <p className="text-2xl font-bold text-red-600">3</p>
-                </div>
-                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Navigation Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white shadow-sm">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4" />
-              <span>Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="equipment" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
-              <span>Equipamentos</span>
-            </TabsTrigger>
-            <TabsTrigger value="plans" className="flex items-center space-x-2">
-              <Wrench className="w-4 h-4" />
-              <span>Planos</span>
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4" />
-              <span>Calendário</span>
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4" />
-              <span>Ordens</span>
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4" />
-              <span>Relatórios</span>
-            </TabsTrigger>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <Tabs defaultValue="calendar" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="equipment">Equipamentos</TabsTrigger>
+            <TabsTrigger value="work-orders">Ordens de Serviço</TabsTrigger>
+            <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-6">
-            <MaintenanceDashboard />
-          </TabsContent>
-
-          <TabsContent value="equipment" className="space-y-6">
-            <EquipmentManagement />
-          </TabsContent>
-
-          <TabsContent value="plans" className="space-y-6">
-            <MaintenancePlans />
-          </TabsContent>
-
-          <TabsContent value="calendar" className="space-y-6">
+          <TabsContent value="calendar">
             <MaintenanceCalendar />
           </TabsContent>
 
-          <TabsContent value="orders" className="space-y-6">
-            <WorkOrders />
+          <TabsContent value="dashboard">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dashboard de Manutenção</CardTitle>
+                <CardDescription>Visão geral dos indicadores de manutenção</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-gray-500 py-8">
+                  Dashboard em desenvolvimento. Em breve você terá acesso a métricas detalhadas.
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="reports" className="space-y-6">
-            <Reports />
+          <TabsContent value="equipment">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gestão de Equipamentos</CardTitle>
+                <CardDescription>Cadastro e monitoramento de equipamentos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-gray-500 py-8">
+                  Gestão de equipamentos em desenvolvimento. Em breve você poderá cadastrar e gerenciar equipamentos.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="work-orders">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ordens de Serviço</CardTitle>
+                <CardDescription>Criação e acompanhamento de ordens de serviço</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-gray-500 py-8">
+                  Gestão de ordens de serviço em desenvolvimento. Em breve você poderá criar e acompanhar ordens.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatórios</CardTitle>
+                <CardDescription>Relatórios e análises de manutenção</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-gray-500 py-8">
+                  Relatórios em desenvolvimento. Em breve você terá acesso a relatórios detalhados.
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,74 +6,88 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar as CalendarIcon, Clock, User, Wrench, AlertTriangle, CheckCircle, Filter } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+
+interface MaintenanceEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  duration: string;
+  type: string;
+  technician: string;
+  equipment: string;
+  status: string;
+  priority: string;
+  description?: string;
+}
 
 const MaintenanceCalendar = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedView, setSelectedView] = useState("month");
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const maintenanceEvents = [
-    {
-      id: 1,
-      title: "Lubrificação Compressor AR-001",
-      date: "2024-06-15",
-      time: "08:00",
-      duration: "2h",
-      type: "Preventiva",
-      technician: "João Silva",
-      equipment: "Compressor AR-001",
-      status: "Agendado",
-      priority: "Média"
-    },
-    {
-      id: 2,
-      title: "Inspeção Transformador TR-204",
-      date: "2024-06-16",
-      time: "14:00",
-      duration: "4h",
-      type: "Preventiva",
-      technician: "Maria Santos",
-      equipment: "Transformador TR-204",
-      status: "Confirmado",
-      priority: "Alta"
-    },
-    {
-      id: 3,
-      title: "Análise Vibracional Motor EL-205",
-      date: "2024-06-17",
-      time: "10:00",
-      duration: "3h",
-      type: "Preditiva",
-      technician: "Ana Lima",
-      equipment: "Motor EL-205",
-      status: "Agendado",
-      priority: "Baixa"
-    },
-    {
-      id: 4,
-      title: "Reparo Bomba HY-102",
-      date: "2024-06-18",
-      time: "09:00",
-      duration: "8h",
-      type: "Corretiva",
-      technician: "Roberto Alves",
-      equipment: "Bomba HY-102",
-      status: "Em Andamento",
-      priority: "Crítica"
-    },
-    {
-      id: 5,
-      title: "Calibração Instrumentos",
-      date: "2024-06-20",
-      time: "13:00",
-      duration: "6h",
-      type: "Preventiva",
-      technician: "Pedro Costa",
-      equipment: "Instrumentos de Medição",
-      status: "Agendado",
-      priority: "Média"
+  // Buscar dados reais do Supabase
+  const fetchMaintenanceData = async () => {
+    try {
+      const { data: workOrders, error } = await supabase
+        .from('work_orders')
+        .select(`
+          *,
+          equipment:equipment_id (name, code),
+          assigned_to_profile:assigned_to (full_name)
+        `)
+        .order('scheduled_date');
+
+      if (error) {
+        console.error('Error fetching work orders:', error);
+        toast({
+          title: "Erro ao carregar ordens de serviço",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Converter dados para o formato do componente
+      const events: MaintenanceEvent[] = workOrders?.map(order => ({
+        id: order.id,
+        title: order.title,
+        date: order.scheduled_date || new Date().toISOString().split('T')[0],
+        time: "08:00", // Valor padrão, pode ser estendido no futuro
+        duration: `${order.estimated_hours || 2}h`,
+        type: order.type === 'preventiva' ? 'Preventiva' : 
+              order.type === 'preditiva' ? 'Preditiva' : 'Corretiva',
+        technician: order.assigned_to_profile?.full_name || 'Não atribuído',
+        equipment: order.equipment?.name || 'Equipamento desconhecido',
+        status: order.status === 'open' ? 'Agendado' :
+                order.status === 'in_progress' ? 'Em Andamento' :
+                order.status === 'completed' ? 'Concluído' : 'Cancelado',
+        priority: order.priority === 'low' ? 'Baixa' :
+                  order.priority === 'medium' ? 'Média' :
+                  order.priority === 'high' ? 'Alta' : 'Crítica',
+        description: order.description,
+      })) || [];
+
+      setMaintenanceEvents(events);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Erro inesperado ao carregar ordens de serviço",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchMaintenanceData();
+  }, []);
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -120,6 +134,17 @@ const MaintenanceCalendar = () => {
     tomorrow.setDate(today.getDate() + 1);
     return eventDate >= tomorrow;
   }).slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
+          <p>Carregando calendário de manutenção...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -204,90 +229,104 @@ const MaintenanceCalendar = () => {
             <CardDescription>Lista de manutenções filtradas para visualização</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {filteredEvents.map((event) => (
-              <Dialog key={event.id}>
-                <DialogTrigger asChild>
-                  <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">{event.title}</h4>
-                      <div className="flex space-x-2">
-                        <Badge className={getTypeColor(event.type)}>{event.type}</Badge>
-                        <Badge className={getPriorityColor(event.priority)}>{event.priority}</Badge>
+            {filteredEvents.length === 0 ? (
+              <div className="text-center py-8">
+                <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Nenhuma manutenção encontrada</p>
+              </div>
+            ) : (
+              filteredEvents.map((event) => (
+                <Dialog key={event.id}>
+                  <DialogTrigger asChild>
+                    <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium">{event.title}</h4>
+                        <div className="flex space-x-2">
+                          <Badge className={getTypeColor(event.type)}>{event.type}</Badge>
+                          <Badge className={getPriorityColor(event.priority)}>{event.priority}</Badge>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <CalendarIcon className="w-4 h-4 mr-1" />
-                        {new Date(event.date).toLocaleDateString('pt-BR')}
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <CalendarIcon className="w-4 h-4 mr-1" />
+                          {new Date(event.date).toLocaleDateString('pt-BR')}
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {event.time} ({event.duration})
+                        </div>
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-1" />
+                          {event.technician}
+                        </div>
+                        <div className="flex items-center">
+                          <Wrench className="w-4 h-4 mr-1" />
+                          {event.equipment}
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {event.time} ({event.duration})
-                      </div>
-                      <div className="flex items-center">
-                        <User className="w-4 h-4 mr-1" />
-                        {event.technician}
-                      </div>
-                      <div className="flex items-center">
-                        <Wrench className="w-4 h-4 mr-1" />
-                        {event.equipment}
-                      </div>
-                    </div>
-                    
-                    <div className="mt-2">
-                      <Badge className={getStatusColor(event.status)}>{event.status}</Badge>
-                    </div>
-                  </div>
-                </DialogTrigger>
-                
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{event.title}</DialogTitle>
-                    <DialogDescription>Detalhes da manutenção programada</DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Equipamento</label>
-                        <p className="text-sm">{event.equipment}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Tipo</label>
-                        <Badge className={getTypeColor(event.type)}>{event.type}</Badge>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Data e Hora</label>
-                        <p className="text-sm">{new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Duração</label>
-                        <p className="text-sm">{event.duration}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Técnico Responsável</label>
-                        <p className="text-sm">{event.technician}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Prioridade</label>
-                        <Badge className={getPriorityColor(event.priority)}>{event.priority}</Badge>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Status</label>
+                      
+                      <div className="mt-2">
                         <Badge className={getStatusColor(event.status)}>{event.status}</Badge>
                       </div>
                     </div>
+                  </DialogTrigger>
+                  
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>{event.title}</DialogTitle>
+                      <DialogDescription>Detalhes da manutenção programada</DialogDescription>
+                    </DialogHeader>
                     
-                    <div className="flex space-x-2 pt-4 border-t">
-                      <Button variant="outline" className="flex-1">Reagendar</Button>
-                      <Button variant="outline" className="flex-1">Editar</Button>
-                      <Button className="flex-1">Iniciar Manutenção</Button>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Equipamento</label>
+                          <p className="text-sm">{event.equipment}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Tipo</label>
+                          <Badge className={getTypeColor(event.type)}>{event.type}</Badge>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Data e Hora</label>
+                          <p className="text-sm">{new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Duração</label>
+                          <p className="text-sm">{event.duration}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Técnico Responsável</label>
+                          <p className="text-sm">{event.technician}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Prioridade</label>
+                          <Badge className={getPriorityColor(event.priority)}>{event.priority}</Badge>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Status</label>
+                          <Badge className={getStatusColor(event.status)}>{event.status}</Badge>
+                        </div>
+                      </div>
+                      
+                      {event.description && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Descrição</label>
+                          <p className="text-sm mt-1">{event.description}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex space-x-2 pt-4 border-t">
+                        <Button variant="outline" className="flex-1">Reagendar</Button>
+                        <Button variant="outline" className="flex-1">Editar</Button>
+                        <Button className="flex-1">Iniciar Manutenção</Button>
+                      </div>
                     </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            ))}
+                  </DialogContent>
+                </Dialog>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -312,7 +351,7 @@ const MaintenanceCalendar = () => {
                         <p className="font-medium text-sm">{event.title}</p>
                         <p className="text-xs text-gray-600">{event.time} - {event.technician}</p>
                       </div>
-                      <Badge className={`${getTypeColor(event.type)} text-xs`}>
+                      <Badge className={`text-xs ${getTypeColor(event.type)}`}>
                         {event.type}
                       </Badge>
                     </div>
@@ -347,7 +386,7 @@ const MaintenanceCalendar = () => {
                         {new Date(event.date).toLocaleDateString('pt-BR')} - {event.technician}
                       </p>
                     </div>
-                    <Badge className={`${getTypeColor(event.type)} text-xs`}>
+                    <Badge className={`text-xs ${getTypeColor(event.type)}`}>
                       {event.type}
                     </Badge>
                   </div>
