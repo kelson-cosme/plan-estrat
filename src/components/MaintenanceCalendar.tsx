@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -313,7 +312,7 @@ const MaintenanceCalendar = () => {
                         <p className="font-medium text-sm">{event.title}</p>
                         <p className="text-xs text-gray-600">{event.time} - {event.technician}</p>
                       </div>
-                      <Badge className={getTypeColor(event.type)} className="text-xs">
+                      <Badge className={`${getTypeColor(event.type)} text-xs`}>
                         {event.type}
                       </Badge>
                     </div>
@@ -348,7 +347,7 @@ const MaintenanceCalendar = () => {
                         {new Date(event.date).toLocaleDateString('pt-BR')} - {event.technician}
                       </p>
                     </div>
-                    <Badge className={getTypeColor(event.type)} className="text-xs">
+                    <Badge className={`${getTypeColor(event.type)} text-xs`}>
                       {event.type}
                     </Badge>
                   </div>
