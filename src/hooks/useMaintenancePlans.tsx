@@ -48,7 +48,14 @@ export const useMaintenancePlans = () => {
         return;
       }
 
-      setPlans(data || []);
+      // Convert database types to interface types
+      const plansData: MaintenancePlan[] = (data || []).map(item => ({
+        ...item,
+        type: item.type as MaintenancePlan['type'],
+        priority: item.priority as MaintenancePlan['priority'],
+      }));
+
+      setPlans(plansData);
     } catch (error) {
       console.error('Error:', error);
       toast({

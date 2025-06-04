@@ -39,7 +39,14 @@ export const useEquipment = () => {
         return;
       }
 
-      setEquipment(data || []);
+      // Convert database types to interface types
+      const equipmentData: Equipment[] = (data || []).map(item => ({
+        ...item,
+        status: item.status as Equipment['status'],
+        criticality: item.criticality as Equipment['criticality'],
+      }));
+
+      setEquipment(equipmentData);
     } catch (error) {
       console.error('Error:', error);
       toast({
