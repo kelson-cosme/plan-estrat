@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MaintenanceCalendar from "@/components/MaintenanceCalendar";
+import EquipmentManagement from "@/components/EquipmentManagement";
 import { LogOut, User, Wrench } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -100,17 +101,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="equipment">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestão de Equipamentos</CardTitle>
-                <CardDescription>Cadastro e monitoramento de equipamentos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Gestão de equipamentos em desenvolvimento. Em breve você poderá cadastrar e gerenciar equipamentos.
-                </p>
-              </CardContent>
-            </Card>
+            <EquipmentManagement />
           </TabsContent>
 
           <TabsContent value="work-orders">

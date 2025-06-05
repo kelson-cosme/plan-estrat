@@ -8,95 +8,46 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Settings, Wrench, AlertTriangle, CheckCircle, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Settings, Wrench, Edit, Trash2 } from "lucide-react";
+import { useEquipment } from "@/hooks/useEquipment";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+
+interface EquipmentFormData {
+  name: string;
+  code: string;
+  type: string;
+  location: string;
+  manufacturer: string;
+  model: string;
+  criticality: 'low' | 'medium' | 'high' | 'critical';
+  installation_date: string;
+}
 
 const EquipmentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
-
-  const equipment = [
-    {
-      id: "EQ-001",
-      name: "Compressor de Ar Principal",
-      type: "Compressor",
-      location: "Setor A",
-      status: "Operacional",
-      criticality: "Alta",
-      lastMaintenance: "15/05/2024",
-      nextMaintenance: "15/08/2024",
-      mtbf: "2,340h",
-      mttr: "4.2h",
-      availability: 96.5
-    },
-    {
-      id: "EQ-002", 
-      name: "Motor Elétrico 001",
-      type: "Motor",
-      location: "Setor B",
-      status: "Manutenção",
-      criticality: "Média",
-      lastMaintenance: "10/06/2024",
-      nextMaintenance: "10/09/2024",
-      mtbf: "1,890h",
-      mttr: "6.1h",
-      availability: 94.2
-    },
-    {
-      id: "EQ-003",
-      name: "Bomba Hidráulica 102",
-      type: "Bomba",
-      location: "Setor C",
-      status: "Parado",
-      criticality: "Alta",
-      lastMaintenance: "05/06/2024",
-      nextMaintenance: "05/07/2024",
-      mtbf: "1,560h",
-      mttr: "8.5h",
-      availability: 89.8
-    },
-    {
-      id: "EQ-004",
-      name: "Transformador Principal",
-      type: "Transformador",
-      location: "Subestação",
-      status: "Operacional",
-      criticality: "Crítica",
-      lastMaintenance: "01/05/2024",
-      nextMaintenance: "01/11/2024",
-      mtbf: "4,200h",
-      mttr: "12.3h",
-      availability: 98.7
-    },
-    {
-      id: "EQ-005",
-      name: "Esteira Transportadora 01",
-      type: "Esteira",
-      location: "Setor A",
-      status: "Operacional",
-      criticality: "Baixa",
-      lastMaintenance: "20/05/2024",
-      nextMaintenance: "20/07/2024",
-      mtbf: "1,200h",
-      mttr: "3.2h",
-      availability: 92.1
-    }
-  ];
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { equipment, loading, refetch } = useEquipment();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<EquipmentFormData>();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Operacional": return "bg-green-100 text-green-800 border-green-200";
-      case "Manutenção": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Parado": return "bg-red-100 text-red-800 border-red-200";
+      case "active": return "bg-green-100 text-green-800 border-green-200";
+      case "maintenance": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "inactive": return "bg-red-100 text-red-800 border-red-200";
+      case "retired": return "bg-gray-100 text-gray-800 border-gray-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getCriticalityColor = (criticality: string) => {
     switch (criticality) {
-      case "Crítica": return "bg-red-100 text-red-800 border-red-200";
-      case "Alta": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "Média": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Baixa": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "critical": return "bg-red-100 text-red-800 border-red-200";
+      case "high": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "low": return "bg-blue-100 text-blue-800 border-blue-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
@@ -105,6 +56,52 @@ const EquipmentManagement = () => {
     eq.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedLocation === "all" || eq.location === selectedLocation)
   );
+
+  const onSubmit = async (data: EquipmentFormData) => {
+    try {
+      const { error } = await supabase
+        .from('equipment')
+        .insert([{
+          name: data.name,
+          code: data.code,
+          type: data.type,
+          location: data.location,
+          manufacturer: data.manufacturer,
+          model: data.model,
+          criticality: data.criticality,
+          installation_date: data.installation_date || null,
+          status: 'active'
+        }]);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Equipamento cadastrado",
+        description: "O equipamento foi cadastrado com sucesso!",
+      });
+
+      reset();
+      setIsDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error('Error creating equipment:', error);
+      toast({
+        title: "Erro ao cadastrar equipamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,7 +113,7 @@ const EquipmentManagement = () => {
               <CardTitle>Gestão de Equipamentos</CardTitle>
               <CardDescription>Controle e monitoramento de ativos industriais</CardDescription>
             </div>
-            <Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -130,63 +127,94 @@ const EquipmentManagement = () => {
                     Adicione um novo equipamento ao sistema de manutenção
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="equipment-name">Nome do Equipamento</Label>
-                    <Input id="equipment-name" placeholder="Ex: Compressor de Ar 001" />
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nome do Equipamento*</Label>
+                      <Input 
+                        id="name" 
+                        placeholder="Ex: Compressor de Ar 001" 
+                        {...register("name", { required: true })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="code">Código*</Label>
+                      <Input 
+                        id="code" 
+                        placeholder="Ex: EQ-001" 
+                        {...register("code", { required: true })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="type">Tipo*</Label>
+                      <Select onValueChange={(value) => setValue("type", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="compressor">Compressor</SelectItem>
+                          <SelectItem value="motor">Motor</SelectItem>
+                          <SelectItem value="bomba">Bomba</SelectItem>
+                          <SelectItem value="transformador">Transformador</SelectItem>
+                          <SelectItem value="esteira">Esteira</SelectItem>
+                          <SelectItem value="outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Localização</Label>
+                      <Input 
+                        id="location" 
+                        placeholder="Ex: Setor A" 
+                        {...register("location")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manufacturer">Fabricante</Label>
+                      <Input 
+                        id="manufacturer" 
+                        placeholder="Ex: Siemens" 
+                        {...register("manufacturer")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="model">Modelo</Label>
+                      <Input 
+                        id="model" 
+                        placeholder="Ex: XYZ-123" 
+                        {...register("model")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="criticality">Criticidade*</Label>
+                      <Select onValueChange={(value) => setValue("criticality", value as any)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a criticidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="critical">Crítica</SelectItem>
+                          <SelectItem value="high">Alta</SelectItem>
+                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="low">Baixa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="installation_date">Data de Instalação</Label>
+                      <Input 
+                        id="installation_date" 
+                        type="date" 
+                        {...register("installation_date")}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="equipment-type">Tipo</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="compressor">Compressor</SelectItem>
-                        <SelectItem value="motor">Motor</SelectItem>
-                        <SelectItem value="bomba">Bomba</SelectItem>
-                        <SelectItem value="transformador">Transformador</SelectItem>
-                        <SelectItem value="esteira">Esteira</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit">Salvar Equipamento</Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Localização</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a localização" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="setor-a">Setor A</SelectItem>
-                        <SelectItem value="setor-b">Setor B</SelectItem>
-                        <SelectItem value="setor-c">Setor C</SelectItem>
-                        <SelectItem value="subestacao">Subestação</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="criticality">Criticidade</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a criticidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="critica">Crítica</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea id="description" placeholder="Descrição detalhada do equipamento..." />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline">Cancelar</Button>
-                  <Button>Salvar Equipamento</Button>
-                </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
@@ -226,7 +254,7 @@ const EquipmentManagement = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">{eq.name}</CardTitle>
-                  <CardDescription>{eq.id} • {eq.type}</CardDescription>
+                  <CardDescription>{eq.code} • {eq.type}</CardDescription>
                 </div>
                 <div className="flex space-x-1">
                   <Button variant="ghost" size="sm">
@@ -241,47 +269,42 @@ const EquipmentManagement = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Status:</span>
-                <Badge className={getStatusColor(eq.status)}>{eq.status}</Badge>
+                <Badge className={getStatusColor(eq.status)}>
+                  {eq.status === 'active' ? 'Ativo' : 
+                   eq.status === 'maintenance' ? 'Manutenção' : 
+                   eq.status === 'inactive' ? 'Inativo' : 'Aposentado'}
+                </Badge>
               </div>
               
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Criticidade:</span>
-                <Badge className={getCriticalityColor(eq.criticality)}>{eq.criticality}</Badge>
+                <Badge className={getCriticalityColor(eq.criticality)}>
+                  {eq.criticality === 'critical' ? 'Crítica' :
+                   eq.criticality === 'high' ? 'Alta' :
+                   eq.criticality === 'medium' ? 'Média' : 'Baixa'}
+                </Badge>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Localização:</span>
-                <span className="text-sm font-medium">{eq.location}</span>
-              </div>
+              {eq.location && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Localização:</span>
+                  <span className="text-sm font-medium">{eq.location}</span>
+                </div>
+              )}
 
-              <div className="space-y-3 pt-3 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Disponibilidade:</span>
-                  <span className="font-medium">{eq.availability}%</span>
+              {eq.manufacturer && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Fabricante:</span>
+                  <span className="text-sm font-medium">{eq.manufacturer}</span>
                 </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">MTBF:</span>
-                  <span className="font-medium">{eq.mtbf}</span>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">MTTR:</span>
-                  <span className="font-medium">{eq.mttr}</span>
-                </div>
-              </div>
+              )}
 
-              <div className="space-y-2 pt-3 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Última Manutenção:</span>
-                  <span className="font-medium">{eq.lastMaintenance}</span>
+              {eq.model && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Modelo:</span>
+                  <span className="text-sm font-medium">{eq.model}</span>
                 </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Próxima Manutenção:</span>
-                  <span className="font-medium text-blue-600">{eq.nextMaintenance}</span>
-                </div>
-              </div>
+              )}
 
               <div className="flex space-x-2 pt-3">
                 <Button variant="outline" size="sm" className="flex-1">
