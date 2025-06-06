@@ -7,6 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MaintenanceCalendar from "@/components/MaintenanceCalendar";
 import EquipmentManagement from "@/components/EquipmentManagement";
+import MaintenanceDashboard from "@/components/MaintenanceDashboard";
+import MaintenancePlans from "@/components/MaintenancePlans";
+import WorkOrders from "@/components/WorkOrders";
+import Reports from "@/components/Reports";
 import { LogOut, User, Wrench } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -73,63 +77,38 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <Tabs defaultValue="calendar" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="calendar">Calendário</TabsTrigger>
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
             <TabsTrigger value="equipment">Equipamentos</TabsTrigger>
+            <TabsTrigger value="maintenance-plans">Planos de Manutenção</TabsTrigger>
             <TabsTrigger value="work-orders">Ordens de Serviço</TabsTrigger>
             <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="calendar">
-            <MaintenanceCalendar />
+          <TabsContent value="dashboard">
+            <MaintenanceDashboard />
           </TabsContent>
 
-          <TabsContent value="dashboard">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dashboard de Manutenção</CardTitle>
-                <CardDescription>Visão geral dos indicadores de manutenção</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Dashboard em desenvolvimento. Em breve você terá acesso a métricas detalhadas.
-                </p>
-              </CardContent>
-            </Card>
+          <TabsContent value="calendar">
+            <MaintenanceCalendar />
           </TabsContent>
 
           <TabsContent value="equipment">
             <EquipmentManagement />
           </TabsContent>
 
+          <TabsContent value="maintenance-plans">
+            <MaintenancePlans />
+          </TabsContent>
+
           <TabsContent value="work-orders">
-            <Card>
-              <CardHeader>
-                <CardTitle>Ordens de Serviço</CardTitle>
-                <CardDescription>Criação e acompanhamento de ordens de serviço</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Gestão de ordens de serviço em desenvolvimento. Em breve você poderá criar e acompanhar ordens.
-                </p>
-              </CardContent>
-            </Card>
+            <WorkOrders />
           </TabsContent>
 
           <TabsContent value="reports">
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatórios</CardTitle>
-                <CardDescription>Relatórios e análises de manutenção</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Relatórios em desenvolvimento. Em breve você terá acesso a relatórios detalhados.
-                </p>
-              </CardContent>
-            </Card>
+            <Reports />
           </TabsContent>
         </Tabs>
       </main>
