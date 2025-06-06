@@ -11,158 +11,132 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Search, Filter, Clock, CheckCircle, AlertTriangle, User, Wrench, Calendar, Edit, Trash2 } from "lucide-react";
+import { useWorkOrders } from "@/hooks/useWorkOrders";
+import { toast } from "@/hooks/use-toast";
 
 const WorkOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [activeTab, setActiveTab] = useState("active");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    title: "",
+    type: "",
+    description: "",
+    priority: "medium",
+    estimated_hours: "",
+    scheduled_date: ""
+  });
 
-  const workOrders = [
-    {
-      id: "OS-2024-001",
-      title: "Manutenção Preventiva - Compressor AR-001",
-      equipment: "Compressor AR-001",
-      type: "Preventiva",
-      status: "Em Andamento",
-      priority: "Média",
-      technician: "João Silva",
-      createdDate: "12/06/2024",
-      scheduledDate: "15/06/2024",
-      completionDate: null,
-      estimatedHours: 4,
-      actualHours: 2.5,
-      progress: 65,
-      description: "Lubrificação geral, verificação de filtros e inspeção visual",
-      cost: "R$ 350,00",
-      materials: ["Óleo lubrificante", "Filtro de ar", "Vedações"]
-    },
-    {
-      id: "OS-2024-002",
-      title: "Reparo Corretivo - Motor EL-205",
-      equipment: "Motor EL-205",
-      type: "Corretiva",
-      status: "Aguardando Peças",
-      priority: "Alta",
-      technician: "Maria Santos",
-      createdDate: "10/06/2024",
-      scheduledDate: "18/06/2024",
-      completionDate: null,
-      estimatedHours: 8,
-      actualHours: 0,
-      progress: 15,
-      description: "Substituição de rolamentos e verificação de alinhamento",
-      cost: "R$ 2.500,00",
-      materials: ["Rolamentos 6308", "Graxa especial", "Parafusos"]
-    },
-    {
-      id: "OS-2024-003",
-      title: "Inspeção Preditiva - Transformador TR-204",
-      equipment: "Transformador TR-204",
-      type: "Preditiva",
-      status: "Concluído",
-      priority: "Baixa",
-      technician: "Pedro Costa",
-      createdDate: "05/06/2024",
-      scheduledDate: "08/06/2024",
-      completionDate: "08/06/2024",
-      estimatedHours: 6,
-      actualHours: 5.5,
-      progress: 100,
-      description: "Análise de óleo isolante e termografia",
-      cost: "R$ 800,00",
-      materials: ["Kit análise óleo"]
-    },
-    {
-      id: "OS-2024-004",
-      title: "Calibração - Instrumentos de Medição",
-      equipment: "Instrumentos Setor A",
-      type: "Preventiva",
-      status: "Agendado",
-      priority: "Média",
-      technician: "Ana Lima",
-      createdDate: "13/06/2024",
-      scheduledDate: "20/06/2024",
-      completionDate: null,
-      estimatedHours: 6,
-      actualHours: 0,
-      progress: 0,
-      description: "Calibração de sensores de pressão e temperatura",
-      cost: "R$ 450,00",
-      materials: ["Certificados calibração"]
-    },
-    {
-      id: "OS-2024-005",
-      title: "Manutenção Emergencial - Bomba HY-102",
-      equipment: "Bomba HY-102",
-      type: "Corretiva",
-      status: "Cancelado",
-      priority: "Crítica",
-      technician: "Roberto Alves",
-      createdDate: "11/06/2024",
-      scheduledDate: "12/06/2024",
-      completionDate: null,
-      estimatedHours: 12,
-      actualHours: 0,
-      progress: 0,
-      description: "Falha no selo mecânico - vazamento severo",
-      cost: "R$ 3.200,00",
-      materials: ["Selo mecânico", "Anel O-ring", "Fluido hidráulico"]
+  const { workOrders, loading, createWorkOrder, updateWorkOrder, deleteWorkOrder } = useWorkOrders();
+
+  const handleCreateOrder = async () => {
+    if (!newOrder.title || !newOrder.type) {
+      toast({
+        title: "Erro",
+        description: "Título e tipo são obrigatórios",
+        variant: "destructive",
+      });
+      return;
     }
-  ];
+
+    const orderData = {
+      title: newOrder.title,
+      type: newOrder.type as 'preventiva' | 'preditiva' | 'corretiva',
+      description: newOrder.description || undefined,
+      priority: newOrder.priority as 'low' | 'medium' | 'high' | 'critical',
+      estimated_hours: newOrder.estimated_hours ? parseInt(newOrder.estimated_hours) : undefined,
+      scheduled_date: newOrder.scheduled_date || undefined,
+      status: 'open' as const
+    };
+
+    const result = await createWorkOrder(orderData);
+    if (result) {
+      setIsCreateDialogOpen(false);
+      setNewOrder({
+        title: "",
+        type: "",
+        description: "",
+        priority: "medium",
+        estimated_hours: "",
+        scheduled_date: ""
+      });
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (confirm("Tem certeza que deseja deletar esta ordem?")) {
+      await deleteWorkOrder(orderId);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Agendado": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "Em Andamento": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Aguardando Peças": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "Concluído": return "bg-green-100 text-green-800 border-green-200";
-      case "Cancelado": return "bg-red-100 text-red-800 border-red-200";
+      case "open": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "in_progress": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "completed": return "bg-green-100 text-green-800 border-green-200";
+      case "cancelled": return "bg-red-100 text-red-800 border-red-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "Crítica": return "bg-red-100 text-red-800 border-red-200";
-      case "Alta": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "Média": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Baixa": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "critical": return "bg-red-100 text-red-800 border-red-200";
+      case "high": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "low": return "bg-blue-100 text-blue-800 border-blue-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case "Preventiva": return "bg-green-100 text-green-800 border-green-200";
-      case "Preditiva": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "Corretiva": return "bg-red-100 text-red-800 border-red-200";
+      case "preventiva": return "bg-green-100 text-green-800 border-green-200";
+      case "preditiva": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "corretiva": return "bg-red-100 text-red-800 border-red-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const getProgressColor = (progress: number) => {
-    if (progress >= 80) return "bg-green-500";
-    if (progress >= 40) return "bg-yellow-500";
-    return "bg-red-500";
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "open": return "Aberto";
+      case "in_progress": return "Em Andamento";
+      case "completed": return "Concluído";
+      case "cancelled": return "Cancelado";
+      default: return status;
+    }
   };
 
   const filteredOrders = workOrders.filter(order => {
     const matchesSearch = order.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.equipment.toLowerCase().includes(searchTerm.toLowerCase());
+                         (order.equipment?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
     
     if (activeTab === "active") {
-      return matchesSearch && matchesStatus && !["Concluído", "Cancelado"].includes(order.status);
+      return matchesSearch && matchesStatus && !["completed", "cancelled"].includes(order.status);
     } else if (activeTab === "completed") {
-      return matchesSearch && matchesStatus && order.status === "Concluído";
+      return matchesSearch && matchesStatus && order.status === "completed";
     } else {
-      return matchesSearch && matchesStatus && order.status === "Cancelado";
+      return matchesSearch && matchesStatus && order.status === "cancelled";
     }
   });
 
-  const activeOrders = workOrders.filter(order => !["Concluído", "Cancelado"].includes(order.status));
-  const completedOrders = workOrders.filter(order => order.status === "Concluído");
-  const cancelledOrders = workOrders.filter(order => order.status === "Cancelado");
+  const activeOrders = workOrders.filter(order => !["completed", "cancelled"].includes(order.status));
+  const completedOrders = workOrders.filter(order => order.status === "completed");
+  const cancelledOrders = workOrders.filter(order => order.status === "cancelled");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2 mx-auto"></div>
+          <p>Carregando ordens...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,7 +148,7 @@ const WorkOrders = () => {
               <CardTitle>Ordens de Serviço</CardTitle>
               <CardDescription>Gestão completa de ordens de manutenção</CardDescription>
             </div>
-            <Dialog>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -191,11 +165,16 @@ const WorkOrders = () => {
                 <div className="grid grid-cols-2 gap-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="order-title">Título da Ordem</Label>
-                    <Input id="order-title" placeholder="Ex: Manutenção Preventiva - Equipamento" />
+                    <Input 
+                      id="order-title" 
+                      placeholder="Ex: Manutenção Preventiva - Equipamento" 
+                      value={newOrder.title}
+                      onChange={(e) => setNewOrder({...newOrder, title: e.target.value})}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="order-type">Tipo de Manutenção</Label>
-                    <Select>
+                    <Select value={newOrder.type} onValueChange={(value) => setNewOrder({...newOrder, type: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
@@ -207,57 +186,53 @@ const WorkOrders = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="equipment">Equipamento</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o equipamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="comp-001">Compressor AR-001</SelectItem>
-                        <SelectItem value="motor-205">Motor EL-205</SelectItem>
-                        <SelectItem value="bomba-102">Bomba HY-102</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="priority">Prioridade</Label>
-                    <Select>
+                    <Select value={newOrder.priority} onValueChange={(value) => setNewOrder({...newOrder, priority: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a prioridade" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="critica">Crítica</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="technician">Técnico Responsável</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o técnico" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="joao">João Silva</SelectItem>
-                        <SelectItem value="maria">Maria Santos</SelectItem>
-                        <SelectItem value="pedro">Pedro Costa</SelectItem>
+                        <SelectItem value="critical">Crítica</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="low">Baixa</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="estimated-hours">Horas Estimadas</Label>
-                    <Input id="estimated-hours" type="number" placeholder="Ex: 4" />
+                    <Input 
+                      id="estimated-hours" 
+                      type="number" 
+                      placeholder="Ex: 4" 
+                      value={newOrder.estimated_hours}
+                      onChange={(e) => setNewOrder({...newOrder, estimated_hours: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled-date">Data Agendada</Label>
+                    <Input 
+                      id="scheduled-date" 
+                      type="date" 
+                      value={newOrder.scheduled_date}
+                      onChange={(e) => setNewOrder({...newOrder, scheduled_date: e.target.value})}
+                    />
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="description">Descrição dos Serviços</Label>
-                    <Textarea id="description" placeholder="Descreva detalhadamente os serviços a serem executados..." />
+                    <Textarea 
+                      id="description" 
+                      placeholder="Descreva detalhadamente os serviços a serem executados..." 
+                      value={newOrder.description}
+                      onChange={(e) => setNewOrder({...newOrder, description: e.target.value})}
+                    />
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline">Cancelar</Button>
-                  <Button>Criar Ordem</Button>
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreateOrder}>Criar Ordem</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -281,11 +256,10 @@ const WorkOrders = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="Agendado">Agendado</SelectItem>
-                <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                <SelectItem value="Aguardando Peças">Aguardando Peças</SelectItem>
-                <SelectItem value="Concluído">Concluído</SelectItem>
-                <SelectItem value="Cancelado">Cancelado</SelectItem>
+                <SelectItem value="open">Aberto</SelectItem>
+                <SelectItem value="in_progress">Em Andamento</SelectItem>
+                <SelectItem value="completed">Concluído</SelectItem>
+                <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -355,111 +329,126 @@ const WorkOrders = () => {
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredOrders.map((order) => (
-              <Card key={order.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{order.title}</CardTitle>
-                      <CardDescription>{order.id} • {order.equipment}</CardDescription>
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Status:</span>
-                    <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Prioridade:</span>
-                    <Badge className={getPriorityColor(order.priority)}>{order.priority}</Badge>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Tipo:</span>
-                    <Badge className={getTypeColor(order.type)}>{order.type}</Badge>
-                  </div>
-
-                  {order.status === "Em Andamento" && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Progresso:</span>
-                        <span className="font-medium">{order.progress}%</span>
-                      </div>
-                      <Progress value={order.progress} className="h-2" />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Técnico:</span>
-                      <div className="font-medium">{order.technician}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Horas Est.:</span>
-                      <div className="font-medium">{order.estimatedHours}h</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Criada em:</span>
-                      <div className="font-medium">{order.createdDate}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Agendada para:</span>
-                      <div className="font-medium text-blue-600">{order.scheduledDate}</div>
-                    </div>
-                  </div>
-
-                  {order.completionDate && (
-                    <div className="text-sm pt-2 border-t">
-                      <span className="text-gray-600">Concluída em:</span>
-                      <span className="ml-2 font-medium text-green-600">{order.completionDate}</span>
-                    </div>
-                  )}
-
-                  {order.status === "Em Andamento" && (
-                    <div className="flex justify-between text-sm pt-2 border-t">
-                      <span className="text-gray-600">Horas Trabalhadas:</span>
-                      <span className="font-medium">{order.actualHours}h / {order.estimatedHours}h</span>
-                    </div>
-                  )}
-
-                  <div className="flex space-x-2 pt-3">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <User className="w-4 h-4 mr-1" />
-                      Atribuir
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      Reagendar
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Wrench className="w-4 h-4 mr-1" />
-                      Executar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredOrders.length === 0 && (
+          {filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma ordem encontrada</h3>
-                <p className="text-gray-600">Tente ajustar seus filtros de busca ou crie uma nova ordem.</p>
+                <p className="text-gray-600">
+                  {workOrders.length === 0 
+                    ? "Crie uma nova ordem de serviço para começar."
+                    : "Tente ajustar seus filtros de busca ou crie uma nova ordem."
+                  }
+                </p>
               </CardContent>
             </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredOrders.map((order) => (
+                <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{order.title}</CardTitle>
+                        <CardDescription>
+                          {order.equipment?.name || "Sem equipamento"}
+                        </CardDescription>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteOrder(order.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge className={getStatusColor(order.status)}>
+                        {getStatusLabel(order.status)}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Prioridade:</span>
+                      <Badge className={getPriorityColor(order.priority)}>
+                        {order.priority === 'critical' ? 'Crítica' : 
+                         order.priority === 'high' ? 'Alta' : 
+                         order.priority === 'medium' ? 'Média' : 'Baixa'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Tipo:</span>
+                      <Badge className={getTypeColor(order.type)}>
+                        {order.type === 'preventiva' ? 'Preventiva' : 
+                         order.type === 'preditiva' ? 'Preditiva' : 'Corretiva'}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {order.estimated_hours && (
+                        <div>
+                          <span className="text-gray-600">Horas Est.:</span>
+                          <div className="font-medium">{order.estimated_hours}h</div>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-gray-600">Criada em:</span>
+                        <div className="font-medium">
+                          {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+                      {order.scheduled_date && (
+                        <div>
+                          <span className="text-gray-600">Agendada para:</span>
+                          <div className="font-medium text-blue-600">
+                            {new Date(order.scheduled_date).toLocaleDateString('pt-BR')}
+                          </div>
+                        </div>
+                      )}
+                      {order.completed_date && (
+                        <div>
+                          <span className="text-gray-600">Concluída em:</span>
+                          <div className="font-medium text-green-600">
+                            {new Date(order.completed_date).toLocaleDateString('pt-BR')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {order.description && (
+                      <div className="pt-3 border-t">
+                        <p className="text-sm text-gray-600 mb-1">Descrição:</p>
+                        <p className="text-sm">{order.description}</p>
+                      </div>
+                    )}
+
+                    <div className="flex space-x-2 pt-3">
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <User className="w-4 h-4 mr-1" />
+                        Atribuir
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        Reagendar
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Wrench className="w-4 h-4 mr-1" />
+                        Executar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
