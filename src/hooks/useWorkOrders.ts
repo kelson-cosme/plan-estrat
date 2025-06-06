@@ -31,6 +31,21 @@ export interface WorkOrder {
   };
 }
 
+type CreateWorkOrderData = {
+  title: string;
+  type: 'preventiva' | 'preditiva' | 'corretiva';
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  status?: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  equipment_id?: string;
+  assigned_to?: string;
+  maintenance_plan_id?: string;
+  scheduled_date?: string;
+  completed_date?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+};
+
 export const useWorkOrders = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,11 +99,11 @@ export const useWorkOrders = () => {
     }
   };
 
-  const createWorkOrder = async (orderData: Partial<WorkOrder>) => {
+  const createWorkOrder = async (orderData: CreateWorkOrderData) => {
     try {
       const { data, error } = await supabase
         .from('work_orders')
-        .insert([orderData])
+        .insert(orderData)
         .select()
         .single();
 

@@ -22,6 +22,17 @@ export interface MaintenancePlan {
   };
 }
 
+type CreateMaintenancePlanData = {
+  name: string;
+  type: string;
+  equipment_id?: string;
+  frequency_days?: number;
+  estimated_duration_hours?: number;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  active?: boolean;
+  description?: string;
+};
+
 export const useMaintenancePlansData = () => {
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +79,11 @@ export const useMaintenancePlansData = () => {
     }
   };
 
-  const createPlan = async (planData: Partial<MaintenancePlan>) => {
+  const createPlan = async (planData: CreateMaintenancePlanData) => {
     try {
       const { data, error } = await supabase
         .from('maintenance_plans')
-        .insert([planData])
+        .insert(planData)
         .select()
         .single();
 
