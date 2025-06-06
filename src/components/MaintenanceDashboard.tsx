@@ -5,8 +5,90 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, Clock, Wrench, TrendingUp, TrendingDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const MaintenanceDashboard = () => {
+  // Fetch equipment data
+  const { data: equipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('equipment')
+        .select('*');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch work orders data
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ['work_orders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('work_orders')
+        .select('*');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch maintenance plans data
+  const { data: maintenancePlans = [] } = useQuery({
+    queryKey: ['maintenance_plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('maintenance_plans')
+        .select('*');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Calculate equipment status based on real data
+  const equipmentStatus = [
+    { 
+      name: "Operacional", 
+      value: Math.round((equipment.filter(eq => eq.status === 'active').length / Math.max(equipment.length, 1)) * 100), 
+      color: "#10B981" 
+    },
+    { 
+      name: "Manutenção", 
+      value: Math.round((equipment.filter(eq => eq.status === 'maintenance').length / Math.max(equipment.length, 1)) * 100), 
+      color: "#F59E0B" 
+    },
+    { 
+      name: "Parado", 
+      value: Math.round((equipment.filter(eq => eq.status === 'inactive').length / Math.max(equipment.length, 1)) * 100), 
+      color: "#EF4444" 
+    },
+  ];
+
+  // Filter critical equipment (maintenance status or high criticality)
+  const criticalAlerts = equipment
+    .filter(eq => eq.status === 'maintenance' || eq.criticality === 'critical')
+    .slice(0, 3)
+    .map((eq, index) => ({
+      id: index + 1,
+      equipment: eq.name,
+      issue: eq.status === 'maintenance' ? 'Em manutenção' : 'Equipamento crítico',
+      priority: eq.criticality === 'critical' ? 'Alta' : 'Média',
+      time: '2h ago'
+    }));
+
+  // Get upcoming maintenance (work orders)
+  const upcomingMaintenance = workOrders
+    .filter(wo => wo.status === 'open' || wo.status === 'in_progress')
+    .slice(0, 3)
+    .map((wo, index) => ({
+      id: wo.id,
+      equipment: equipment.find(eq => eq.id === wo.equipment_id)?.name || 'Equipamento não encontrado',
+      type: wo.type === 'preventive' ? 'Preventiva' : wo.type === 'predictive' ? 'Preditiva' : 'Corretiva',
+      date: wo.scheduled_date ? new Date(wo.scheduled_date).toLocaleDateString('pt-BR') : 'Não agendado',
+      technician: 'Técnico Responsável'
+    }));
+
+  // Sample data for charts (since we don't have historical data yet)
   const monthlyData = [
     { month: "Jan", preventiva: 45, corretiva: 12, preditiva: 8 },
     { month: "Fev", preventiva: 52, corretiva: 8, preditiva: 12 },
@@ -14,24 +96,6 @@ const MaintenanceDashboard = () => {
     { month: "Abr", preventiva: 61, corretiva: 6, preditiva: 14 },
     { month: "Mai", preventiva: 55, corretiva: 10, preditiva: 16 },
     { month: "Jun", preventiva: 67, corretiva: 4, preditiva: 18 },
-  ];
-
-  const equipmentStatus = [
-    { name: "Operacional", value: 85, color: "#10B981" },
-    { name: "Manutenção", value: 10, color: "#F59E0B" },
-    { name: "Parado", value: 5, color: "#EF4444" },
-  ];
-
-  const criticalAlerts = [
-    { id: 1, equipment: "Compressor AR-001", issue: "Temperatura alta", priority: "Alta", time: "2h ago" },
-    { id: 2, equipment: "Motor EL-205", issue: "Vibração excessiva", priority: "Média", time: "4h ago" },
-    { id: 3, equipment: "Bomba HY-102", issue: "Pressão baixa", priority: "Alta", time: "6h ago" },
-  ];
-
-  const upcomingMaintenance = [
-    { id: 1, equipment: "Turbina GT-001", type: "Preventiva", date: "Amanhã", technician: "João Silva" },
-    { id: 2, equipment: "Gerador GE-301", type: "Preditiva", date: "15/06", technician: "Maria Santos" },
-    { id: 3, equipment: "Transformador TR-204", type: "Preventiva", date: "18/06", technician: "Pedro Costa" },
   ];
 
   return (
@@ -42,11 +106,11 @@ const MaintenanceDashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100">MTBF Médio</p>
-                <p className="text-2xl font-bold">2,340h</p>
+                <p className="text-blue-100">Total Equipamentos</p>
+                <p className="text-2xl font-bold">{equipment.length}</p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="w-4 h-4 mr-1" />
-                  <span className="text-sm">+12% vs mês anterior</span>
+                  <span className="text-sm">Equipamentos cadastrados</span>
                 </div>
               </div>
               <Wrench className="w-12 h-12 text-blue-200" />
@@ -58,14 +122,14 @@ const MaintenanceDashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100">MTTR Médio</p>
-                <p className="text-2xl font-bold">4.2h</p>
+                <p className="text-green-100">Ordens de Serviço</p>
+                <p className="text-2xl font-bold">{workOrders.length}</p>
                 <div className="flex items-center mt-2">
-                  <TrendingDown className="w-4 h-4 mr-1" />
-                  <span className="text-sm">-8% vs mês anterior</span>
+                  <Clock className="w-4 h-4 mr-1" />
+                  <span className="text-sm">Total de ordens</span>
                 </div>
               </div>
-              <Clock className="w-12 h-12 text-green-200" />
+              <CheckCircle className="w-12 h-12 text-green-200" />
             </div>
           </CardContent>
         </Card>
@@ -74,11 +138,11 @@ const MaintenanceDashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100">OEE Geral</p>
-                <p className="text-2xl font-bold">87.5%</p>
+                <p className="text-purple-100">Planos de Manutenção</p>
+                <p className="text-2xl font-bold">{maintenancePlans.length}</p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="w-4 h-4 mr-1" />
-                  <span className="text-sm">+3.2% vs mês anterior</span>
+                  <span className="text-sm">Planos ativos</span>
                 </div>
               </div>
               <TrendingUp className="w-12 h-12 text-purple-200" />
@@ -90,11 +154,11 @@ const MaintenanceDashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100">Custo/Mês</p>
-                <p className="text-2xl font-bold">R$ 124k</p>
+                <p className="text-orange-100">Equipamentos Críticos</p>
+                <p className="text-2xl font-bold">{equipment.filter(eq => eq.criticality === 'critical').length}</p>
                 <div className="flex items-center mt-2">
-                  <TrendingDown className="w-4 h-4 mr-1" />
-                  <span className="text-sm">-5% vs mês anterior</span>
+                  <AlertTriangle className="w-4 h-4 mr-1" />
+                  <span className="text-sm">Requer atenção</span>
                 </div>
               </div>
               <AlertTriangle className="w-12 h-12 text-orange-200" />
@@ -166,20 +230,27 @@ const MaintenanceDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {criticalAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border-l-4 border-red-500">
-                  <div>
-                    <p className="font-medium text-gray-900">{alert.equipment}</p>
-                    <p className="text-sm text-gray-600">{alert.issue}</p>
+              {criticalAlerts.length > 0 ? (
+                criticalAlerts.map((alert) => (
+                  <div key={alert.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border-l-4 border-red-500">
+                    <div>
+                      <p className="font-medium text-gray-900">{alert.equipment}</p>
+                      <p className="text-sm text-gray-600">{alert.issue}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={alert.priority === "Alta" ? "destructive" : "secondary"}>
+                        {alert.priority}
+                      </Badge>
+                      <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant={alert.priority === "Alta" ? "destructive" : "secondary"}>
-                      {alert.priority}
-                    </Badge>
-                    <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                  <p>Nenhum alerta crítico no momento</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -195,20 +266,27 @@ const MaintenanceDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingMaintenance.map((maintenance) => (
-                <div key={maintenance.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
-                  <div>
-                    <p className="font-medium text-gray-900">{maintenance.equipment}</p>
-                    <p className="text-sm text-gray-600">Técnico: {maintenance.technician}</p>
+              {upcomingMaintenance.length > 0 ? (
+                upcomingMaintenance.map((maintenance) => (
+                  <div key={maintenance.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                    <div>
+                      <p className="font-medium text-gray-900">{maintenance.equipment}</p>
+                      <p className="text-sm text-gray-600">Técnico: {maintenance.technician}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {maintenance.type}
+                      </Badge>
+                      <p className="text-xs text-gray-500 mt-1">{maintenance.date}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      {maintenance.type}
-                    </Badge>
-                    <p className="text-xs text-gray-500 mt-1">{maintenance.date}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+                  <p>Nenhuma manutenção programada</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
