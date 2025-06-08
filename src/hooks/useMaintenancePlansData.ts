@@ -66,7 +66,7 @@ export const useMaintenancePlansData = () => {
       const plansData: MaintenancePlan[] = (data || []).map(item => ({
         ...item,
         priority: item.priority as MaintenancePlan['priority'],
-        frequency: item.frequency_days ? item.frequency_days.toString() : item.frequency,
+        frequency: item.frequency_days ? item.frequency_days.toString() : undefined,
       }));
 
       setPlans(plansData);
