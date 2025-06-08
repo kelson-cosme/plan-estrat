@@ -13,6 +13,7 @@ export interface MaintenancePlan {
   priority: 'low' | 'medium' | 'high' | 'critical';
   active: boolean;
   description?: string;
+  tasks?: string;
   created_at: string;
   updated_at: string;
   equipment?: {
@@ -31,6 +32,7 @@ type CreateMaintenancePlanData = {
   priority?: 'low' | 'medium' | 'high' | 'critical';
   active?: boolean;
   description?: string;
+  tasks?: string;
 };
 
 export const useMaintenancePlansData = () => {

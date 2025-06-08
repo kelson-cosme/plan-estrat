@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause } from "lucide-react";
 import { useMaintenancePlansData } from "@/hooks/useMaintenancePlansData";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const MaintenancePlans = () => {
@@ -21,12 +23,25 @@ const MaintenancePlans = () => {
     type: "",
     equipment_id: "",
     frequency_days: "",
-    estimated_duration_hours: "",
+    tasks: "",
     priority: "medium",
     description: ""
   });
 
   const { plans, loading, createPlan, updatePlan, deletePlan } = useMaintenancePlansData();
+
+  // Fetch equipment data for the select dropdown
+  const { data: equipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('equipment')
+        .select('id, name, code')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const handleCreatePlan = async () => {
     if (!newPlan.name || !newPlan.type) {
@@ -43,7 +58,7 @@ const MaintenancePlans = () => {
       type: newPlan.type,
       equipment_id: newPlan.equipment_id || undefined,
       frequency_days: newPlan.frequency_days ? parseInt(newPlan.frequency_days) : undefined,
-      estimated_duration_hours: newPlan.estimated_duration_hours ? parseInt(newPlan.estimated_duration_hours) : undefined,
+      tasks: newPlan.tasks || undefined,
       priority: newPlan.priority as 'low' | 'medium' | 'high' | 'critical',
       description: newPlan.description || undefined,
       active: true
@@ -57,7 +72,7 @@ const MaintenancePlans = () => {
         type: "",
         equipment_id: "",
         frequency_days: "",
-        estimated_duration_hours: "",
+        tasks: "",
         priority: "medium",
         description: ""
       });
@@ -166,6 +181,21 @@ const MaintenancePlans = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="equipment">Equipamento</Label>
+                    <Select value={newPlan.equipment_id} onValueChange={(value) => setNewPlan({...newPlan, equipment_id: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o equipamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {equipment.map((eq) => (
+                          <SelectItem key={eq.id} value={eq.id}>
+                            {eq.name} ({eq.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="frequency">Frequência (dias)</Label>
                     <Input 
                       id="frequency" 
@@ -173,16 +203,6 @@ const MaintenancePlans = () => {
                       placeholder="Ex: 30" 
                       value={newPlan.frequency_days}
                       onChange={(e) => setNewPlan({...newPlan, frequency_days: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duração Estimada (horas)</Label>
-                    <Input 
-                      id="duration" 
-                      type="number" 
-                      placeholder="Ex: 4" 
-                      value={newPlan.estimated_duration_hours}
-                      onChange={(e) => setNewPlan({...newPlan, estimated_duration_hours: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
@@ -198,6 +218,15 @@ const MaintenancePlans = () => {
                         <SelectItem value="low">Baixa</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="tasks">Tarefas do Plano</Label>
+                    <Textarea 
+                      id="tasks" 
+                      placeholder="Descreva as tarefas que devem ser executadas..." 
+                      value={newPlan.tasks}
+                      onChange={(e) => setNewPlan({...newPlan, tasks: e.target.value})}
+                    />
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="description">Descrição</Label>
@@ -358,12 +387,6 @@ const MaintenancePlans = () => {
                           <div className="font-medium">{plan.frequency_days} dias</div>
                         </div>
                       )}
-                      {plan.estimated_duration_hours && (
-                        <div>
-                          <span className="text-gray-600">Duração:</span>
-                          <div className="font-medium">{plan.estimated_duration_hours}h</div>
-                        </div>
-                      )}
                       <div>
                         <span className="text-gray-600">Criado em:</span>
                         <div className="font-medium">
@@ -377,6 +400,13 @@ const MaintenancePlans = () => {
                         </div>
                       </div>
                     </div>
+
+                    {plan.tasks && (
+                      <div className="pt-3 border-t">
+                        <p className="text-sm text-gray-600 mb-1">Tarefas:</p>
+                        <p className="text-sm">{plan.tasks}</p>
+                      </div>
+                    )}
 
                     {plan.description && (
                       <div className="pt-3 border-t">

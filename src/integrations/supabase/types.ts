@@ -65,6 +65,7 @@ export type Database = {
           id: string
           name: string
           priority: string | null
+          tasks: string | null
           type: string
           updated_at: string
         }
@@ -78,6 +79,7 @@ export type Database = {
           id?: string
           name: string
           priority?: string | null
+          tasks?: string | null
           type: string
           updated_at?: string
         }
@@ -91,6 +93,7 @@ export type Database = {
           id?: string
           name?: string
           priority?: string | null
+          tasks?: string | null
           type?: string
           updated_at?: string
         }
