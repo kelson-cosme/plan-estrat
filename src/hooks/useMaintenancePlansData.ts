@@ -8,7 +8,7 @@ export interface MaintenancePlan {
   name: string;
   type: string;
   equipment_id?: string;
-  frequency_days?: number;
+  frequency?: string;
   estimated_duration_hours?: number;
   priority: 'low' | 'medium' | 'high' | 'critical';
   active: boolean;
@@ -27,7 +27,7 @@ type CreateMaintenancePlanData = {
   name: string;
   type: string;
   equipment_id?: string;
-  frequency_days?: number;
+  frequency?: string;
   estimated_duration_hours?: number;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   active?: boolean;
@@ -66,6 +66,7 @@ export const useMaintenancePlansData = () => {
       const plansData: MaintenancePlan[] = (data || []).map(item => ({
         ...item,
         priority: item.priority as MaintenancePlan['priority'],
+        frequency: item.frequency_days ? item.frequency_days.toString() : item.frequency,
       }));
 
       setPlans(plansData);

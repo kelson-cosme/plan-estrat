@@ -22,7 +22,7 @@ const MaintenancePlans = () => {
     name: "",
     type: "",
     equipment_id: "",
-    frequency_days: "",
+    frequency: "",
     tasks: "",
     priority: "medium",
     description: ""
@@ -57,7 +57,7 @@ const MaintenancePlans = () => {
       name: newPlan.name,
       type: newPlan.type,
       equipment_id: newPlan.equipment_id || undefined,
-      frequency_days: newPlan.frequency_days ? parseInt(newPlan.frequency_days) : undefined,
+      frequency: newPlan.frequency || undefined,
       tasks: newPlan.tasks || undefined,
       priority: newPlan.priority as 'low' | 'medium' | 'high' | 'critical',
       description: newPlan.description || undefined,
@@ -71,7 +71,7 @@ const MaintenancePlans = () => {
         name: "",
         type: "",
         equipment_id: "",
-        frequency_days: "",
+        frequency: "",
         tasks: "",
         priority: "medium",
         description: ""
@@ -114,6 +114,17 @@ const MaintenancePlans = () => {
     }
   };
 
+  const getFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case "diaria": return "Diária";
+      case "semanal": return "Semanal";
+      case "quinzenal": return "Quinzenal";
+      case "mensal": return "Mensal";
+      case "anual": return "Anual";
+      default: return frequency;
+    }
+  };
+
   const filteredPlans = plans.filter(plan => {
     if (activeTab === "all") return true;
     if (activeTab === "preventive") return plan.type === "preventiva";
@@ -150,7 +161,7 @@ const MaintenancePlans = () => {
                   Novo Plano
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl">
+              <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Criar Novo Plano de Manutenção</DialogTitle>
                   <DialogDescription>
@@ -196,26 +207,17 @@ const MaintenancePlans = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="frequency">Frequência (dias)</Label>
-                    <Input 
-                      id="frequency" 
-                      type="number" 
-                      placeholder="Ex: 30" 
-                      value={newPlan.frequency_days}
-                      onChange={(e) => setNewPlan({...newPlan, frequency_days: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="priority">Prioridade</Label>
-                    <Select value={newPlan.priority} onValueChange={(value) => setNewPlan({...newPlan, priority: value})}>
+                    <Label htmlFor="frequency">Frequência</Label>
+                    <Select value={newPlan.frequency} onValueChange={(value) => setNewPlan({...newPlan, frequency: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a prioridade" />
+                        <SelectValue placeholder="Selecione a frequência" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="critical">Crítica</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
-                        <SelectItem value="medium">Média</SelectItem>
-                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="diaria">Diária</SelectItem>
+                        <SelectItem value="semanal">Semanal</SelectItem>
+                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                        <SelectItem value="mensal">Mensal</SelectItem>
+                        <SelectItem value="anual">Anual</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -226,15 +228,6 @@ const MaintenancePlans = () => {
                       placeholder="Descreva as tarefas que devem ser executadas..." 
                       value={newPlan.tasks}
                       onChange={(e) => setNewPlan({...newPlan, tasks: e.target.value})}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea 
-                      id="description" 
-                      placeholder="Descreva o plano de manutenção..." 
-                      value={newPlan.description}
-                      onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
                     />
                   </div>
                 </div>
@@ -379,14 +372,17 @@ const MaintenancePlans = () => {
                          plan.type === 'preditiva' ? 'Preditiva' : 'Corretiva'}
                       </Badge>
                     </div>
+
+                    {plan.frequency && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Frequência:</span>
+                        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                          {getFrequencyLabel(plan.frequency)}
+                        </Badge>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      {plan.frequency_days && (
-                        <div>
-                          <span className="text-gray-600">Frequência:</span>
-                          <div className="font-medium">{plan.frequency_days} dias</div>
-                        </div>
-                      )}
                       <div>
                         <span className="text-gray-600">Criado em:</span>
                         <div className="font-medium">
