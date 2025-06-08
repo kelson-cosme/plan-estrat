@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause } from "lucide-react";
 import { useMaintenancePlansData } from "@/hooks/useMaintenancePlansData";
+import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -18,6 +18,9 @@ import { toast } from "@/hooks/use-toast";
 const MaintenancePlans = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [scheduledDate, setScheduledDate] = useState("");
   const [newPlan, setNewPlan] = useState({
     name: "",
     type: "",
@@ -29,6 +32,7 @@ const MaintenancePlans = () => {
   });
 
   const { plans, loading, createPlan, updatePlan, deletePlan } = useMaintenancePlansData();
+  const { createWorkOrder } = useWorkOrders();
 
   // Fetch equipment data for the select dropdown
   const { data: equipment = [] } = useQuery({
@@ -86,6 +90,67 @@ const MaintenancePlans = () => {
   const handleDeletePlan = async (planId: string) => {
     if (confirm("Tem certeza que deseja deletar este plano?")) {
       await deletePlan(planId);
+    }
+  };
+
+  const handleSchedulePlan = (plan: any) => {
+    setSelectedPlan(plan);
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleExecutePlan = async (plan: any) => {
+    const workOrderData = {
+      title: `Execução: ${plan.name}`,
+      type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
+      description: plan.description || plan.tasks || `Execução do plano de manutenção: ${plan.name}`,
+      priority: plan.priority,
+      status: 'in_progress' as const,
+      equipment_id: plan.equipment_id,
+      maintenance_plan_id: plan.id,
+      scheduled_date: new Date().toISOString().split('T')[0],
+      estimated_hours: plan.estimated_duration_hours
+    };
+
+    const result = await createWorkOrder(workOrderData);
+    if (result) {
+      toast({
+        title: "Ordem de serviço criada",
+        description: `Ordem de execução criada para o plano "${plan.name}"`,
+      });
+    }
+  };
+
+  const handleCreateScheduledOrder = async () => {
+    if (!selectedPlan || !scheduledDate) {
+      toast({
+        title: "Erro",
+        description: "Data de agendamento é obrigatória",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const workOrderData = {
+      title: `Agendamento: ${selectedPlan.name}`,
+      type: selectedPlan.type as 'preventiva' | 'preditiva' | 'corretiva',
+      description: selectedPlan.description || selectedPlan.tasks || `Agendamento do plano de manutenção: ${selectedPlan.name}`,
+      priority: selectedPlan.priority,
+      status: 'open' as const,
+      equipment_id: selectedPlan.equipment_id,
+      maintenance_plan_id: selectedPlan.id,
+      scheduled_date: scheduledDate,
+      estimated_hours: selectedPlan.estimated_duration_hours
+    };
+
+    const result = await createWorkOrder(workOrderData);
+    if (result) {
+      toast({
+        title: "Ordem de serviço agendada",
+        description: `Ordem agendada para ${new Date(scheduledDate).toLocaleDateString('pt-BR')}`,
+      });
+      setIsScheduleDialogOpen(false);
+      setSelectedPlan(null);
+      setScheduledDate("");
     }
   };
 
@@ -412,11 +477,21 @@ const MaintenancePlans = () => {
                     )}
 
                     <div className="flex space-x-2 pt-3">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleSchedulePlan(plan)}
+                      >
                         <Calendar className="w-4 h-4 mr-1" />
                         Agendar
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleExecutePlan(plan)}
+                      >
                         <Wrench className="w-4 h-4 mr-1" />
                         Executar
                       </Button>
@@ -428,6 +503,38 @@ const MaintenancePlans = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Schedule Dialog */}
+      <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agendar Plano de Manutenção</DialogTitle>
+            <DialogDescription>
+              Selecione a data para agendar a execução do plano "{selectedPlan?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="scheduled-date">Data de Agendamento</Label>
+              <Input 
+                id="scheduled-date"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateScheduledOrder}>
+              Confirmar Agendamento
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
