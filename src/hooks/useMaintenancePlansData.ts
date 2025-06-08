@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -35,6 +34,30 @@ type CreateMaintenancePlanData = {
   tasks?: string;
 };
 
+// Helper function to convert frequency string to days
+const frequencyToDays = (frequency: string): number | undefined => {
+  switch (frequency) {
+    case 'diaria': return 1;
+    case 'semanal': return 7;
+    case 'quinzenal': return 15;
+    case 'mensal': return 30;
+    case 'anual': return 365;
+    default: return undefined;
+  }
+};
+
+// Helper function to convert days to frequency string
+const daysToFrequency = (days: number): string | undefined => {
+  switch (days) {
+    case 1: return 'diaria';
+    case 7: return 'semanal';
+    case 15: return 'quinzenal';
+    case 30: return 'mensal';
+    case 365: return 'anual';
+    default: return undefined;
+  }
+};
+
 export const useMaintenancePlansData = () => {
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +89,7 @@ export const useMaintenancePlansData = () => {
       const plansData: MaintenancePlan[] = (data || []).map(item => ({
         ...item,
         priority: item.priority as MaintenancePlan['priority'],
-        frequency: item.frequency_days ? item.frequency_days.toString() : undefined,
+        frequency: item.frequency_days ? daysToFrequency(item.frequency_days) : undefined,
       }));
 
       setPlans(plansData);
@@ -84,9 +107,22 @@ export const useMaintenancePlansData = () => {
 
   const createPlan = async (planData: CreateMaintenancePlanData) => {
     try {
+      // Convert frequency string to days for database storage
+      const dbData = {
+        name: planData.name,
+        type: planData.type,
+        equipment_id: planData.equipment_id || undefined,
+        frequency_days: planData.frequency ? frequencyToDays(planData.frequency) : undefined,
+        estimated_duration_hours: planData.estimated_duration_hours,
+        priority: planData.priority,
+        active: planData.active,
+        description: planData.description,
+        tasks: planData.tasks,
+      };
+
       const { data, error } = await supabase
         .from('maintenance_plans')
-        .insert(planData)
+        .insert(dbData)
         .select()
         .single();
 
@@ -120,9 +156,16 @@ export const useMaintenancePlansData = () => {
 
   const updatePlan = async (id: string, planData: Partial<MaintenancePlan>) => {
     try {
+      // Convert frequency string to days if frequency is being updated
+      const dbData = { ...planData };
+      if (planData.frequency) {
+        delete dbData.frequency;
+        (dbData as any).frequency_days = frequencyToDays(planData.frequency);
+      }
+
       const { data, error } = await supabase
         .from('maintenance_plans')
-        .update(planData)
+        .update(dbData)
         .eq('id', id)
         .select()
         .single();
