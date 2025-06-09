@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +12,20 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Search, Filter, Clock, CheckCircle, AlertTriangle, User, Wrench, Calendar, Edit, Trash2 } from "lucide-react";
 import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { toast } from "@/hooks/use-toast";
+import WorkOrderEditDialog from "./WorkOrderEditDialog";
+import WorkOrderAssignDialog from "./WorkOrderAssignDialog";
+import WorkOrderExecuteDialog from "./WorkOrderExecuteDialog";
 
 const WorkOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [activeTab, setActiveTab] = useState("active");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [assigningOrderId, setAssigningOrderId] = useState(null);
+  const [executingOrderId, setExecutingOrderId] = useState(null);
+  const [rescheduleOrderId, setRescheduleOrderId] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
   const [newOrder, setNewOrder] = useState({
     title: "",
     type: "",
@@ -67,6 +74,41 @@ const WorkOrders = () => {
   const handleDeleteOrder = async (orderId: string) => {
     if (confirm("Tem certeza que deseja deletar esta ordem?")) {
       await deleteWorkOrder(orderId);
+    }
+  };
+
+  const handleAssignOrder = async (orderId: string, assignedTo: string) => {
+    return await updateWorkOrder(orderId, { 
+      assigned_to: assignedTo,
+      status: 'in_progress'
+    });
+  };
+
+  const handleExecuteOrder = async (orderId: string, data: any) => {
+    return await updateWorkOrder(orderId, data);
+  };
+
+  const handleRescheduleOrder = async () => {
+    if (!rescheduleOrderId || !rescheduleDate) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma nova data",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const result = await updateWorkOrder(rescheduleOrderId, {
+      scheduled_date: rescheduleDate
+    });
+
+    if (result) {
+      setRescheduleOrderId(null);
+      setRescheduleDate("");
+      toast({
+        title: "Ordem reagendada",
+        description: "Data atualizada com sucesso",
+      });
     }
   };
 
@@ -352,10 +394,19 @@ const WorkOrders = () => {
                         <CardTitle className="text-lg">{order.title}</CardTitle>
                         <CardDescription>
                           {order.equipment?.name || "Sem equipamento"}
+                          {order.assigned_to_profile && (
+                            <span className="ml-2 text-blue-600">
+                              • {order.assigned_to_profile.full_name}
+                            </span>
+                          )}
                         </CardDescription>
                       </div>
                       <div className="flex space-x-1">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setEditingOrder(order)}
+                        >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button 
@@ -400,6 +451,12 @@ const WorkOrders = () => {
                           <div className="font-medium">{order.estimated_hours}h</div>
                         </div>
                       )}
+                      {order.actual_hours && (
+                        <div>
+                          <span className="text-gray-600">Horas Reais:</span>
+                          <div className="font-medium">{order.actual_hours}h</div>
+                        </div>
+                      )}
                       <div>
                         <span className="text-gray-600">Criada em:</span>
                         <div className="font-medium">
@@ -432,15 +489,31 @@ const WorkOrders = () => {
                     )}
 
                     <div className="flex space-x-2 pt-3">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setAssigningOrderId(order.id)}
+                      >
                         <User className="w-4 h-4 mr-1" />
-                        Atribuir
+                        {order.assigned_to ? 'Reatribuir' : 'Atribuir'}
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setRescheduleOrderId(order.id)}
+                      >
                         <Calendar className="w-4 h-4 mr-1" />
                         Reagendar
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setExecutingOrderId(order.id)}
+                        disabled={order.status === 'completed'}
+                      >
                         <Wrench className="w-4 h-4 mr-1" />
                         Executar
                       </Button>
@@ -452,6 +525,60 @@ const WorkOrders = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <WorkOrderEditDialog
+        order={editingOrder}
+        isOpen={!!editingOrder}
+        onClose={() => setEditingOrder(null)}
+        onUpdate={updateWorkOrder}
+      />
+
+      <WorkOrderAssignDialog
+        orderId={assigningOrderId}
+        currentAssignedTo={workOrders.find(o => o.id === assigningOrderId)?.assigned_to}
+        isOpen={!!assigningOrderId}
+        onClose={() => setAssigningOrderId(null)}
+        onAssign={handleAssignOrder}
+      />
+
+      <WorkOrderExecuteDialog
+        orderId={executingOrderId}
+        isOpen={!!executingOrderId}
+        onClose={() => setExecutingOrderId(null)}
+        onExecute={handleExecuteOrder}
+      />
+
+      {/* Reschedule Dialog */}
+      <Dialog open={!!rescheduleOrderId} onOpenChange={() => setRescheduleOrderId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reagendar Ordem de Serviço</DialogTitle>
+            <DialogDescription>
+              Selecione uma nova data para execução
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reschedule-date">Nova Data</Label>
+              <Input
+                id="reschedule-date"
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setRescheduleOrderId(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleRescheduleOrder}>
+              Reagendar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
