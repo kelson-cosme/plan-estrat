@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -88,15 +87,40 @@ const MaintenanceDashboard = () => {
       technician: 'Técnico Responsável'
     }));
 
-  // Sample data for charts (since we don't have historical data yet)
-  const monthlyData = [
-    { month: "Jan", preventiva: 45, corretiva: 12, preditiva: 8 },
-    { month: "Fev", preventiva: 52, corretiva: 8, preditiva: 12 },
-    { month: "Mar", preventiva: 48, corretiva: 15, preditiva: 10 },
-    { month: "Abr", preventiva: 61, corretiva: 6, preditiva: 14 },
-    { month: "Mai", preventiva: 55, corretiva: 10, preditiva: 16 },
-    { month: "Jun", preventiva: 67, corretiva: 4, preditiva: 18 },
-  ];
+  // Calculate real monthly data from work orders
+  const monthlyData = React.useMemo(() => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const currentYear = new Date().getFullYear();
+    
+    // Initialize monthly counts
+    const monthlyStats = months.map(month => ({
+      month,
+      preventiva: 0,
+      corretiva: 0,
+      preditiva: 0
+    }));
+
+    // Count work orders by month and type
+    workOrders.forEach(wo => {
+      if (wo.created_at) {
+        const date = new Date(wo.created_at);
+        if (date.getFullYear() === currentYear) {
+          const monthIndex = date.getMonth();
+          const monthData = monthlyStats[monthIndex];
+          
+          if (wo.type === 'preventive') {
+            monthData.preventiva++;
+          } else if (wo.type === 'corrective') {
+            monthData.corretiva++;
+          } else if (wo.type === 'predictive') {
+            monthData.preditiva++;
+          }
+        }
+      }
+    });
+
+    return monthlyStats;
+  }, [workOrders]);
 
   return (
     <div className="space-y-6">
@@ -172,7 +196,7 @@ const MaintenanceDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Tendência de Manutenções</CardTitle>
-            <CardDescription>Distribuição mensal por tipo de manutenção</CardDescription>
+            <CardDescription>Ordens de serviço criadas por mês e tipo</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
