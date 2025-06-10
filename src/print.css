@@ -1,0 +1,26 @@
+@media print {
+    /* Esconde todos os elementos da página por padrão */
+    body * {
+      visibility: hidden;
+    }
+  
+    /* Deixa visível apenas a área de impressão e tudo o que estiver dentro dela */
+    .printable-area, .printable-area * {
+      visibility: visible;
+    }
+  
+    /* Garante que a área de impressão ocupe toda a página */
+    .printable-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+    }
+  
+    /* Remove sombras e fundos que não queremos na impressão */
+    .printable-area {
+      box-shadow: none;
+      border: none;
+    }
+  }

@@ -42,12 +42,28 @@ const Index = () => {
     const plan = scheduleData.maintenance_plans;
     if (!plan) return;
 
+    // --- LÓGICA DE CONVERSÃO DAS TAREFAS ---
+    let tasksArray: string[] = [];
+    // Verifica se 'tasks' existe e é uma string antes de tentar o parse
+    if (plan.tasks && typeof plan.tasks === 'string') {
+        try {
+            tasksArray = JSON.parse(plan.tasks);
+        } catch (e) {
+            console.error("Falha ao converter as tarefas do plano:", e);
+            tasksArray = []; // Garante que seja um array em caso de erro
+        }
+    } else if (Array.isArray(plan.tasks)) {
+        // Se já for um array, apenas usa
+        tasksArray = plan.tasks;
+    }
+
     const prefill = {
       title: `Execução Manual: ${plan.name}`,
-      description: plan.description || (Array.isArray(plan.tasks) ? plan.tasks.join('\n') : ''),
+      description: plan.description || "",
+      tasks: tasksArray, // Passa o array de tarefas já convertido
       type: plan.type,
       priority: plan.priority,
-      equipment_id: plan.equipment?.id, // Garante que o ID do equipamento seja passado
+      equipment_id: plan.equipment?.id,
       maintenance_plan_id: scheduleData.maintenance_plan_id,
       scheduled_date: scheduleData.next_scheduled_date,
     };
@@ -55,7 +71,6 @@ const Index = () => {
     setWorkOrderPrefill(prefill);
     setActiveTab("work-orders");
   };
-
 
   if (loading) {
     return (
