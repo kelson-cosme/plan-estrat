@@ -15,6 +15,8 @@ import { toast } from "@/hooks/use-toast";
 import WorkOrderEditDialog from "./WorkOrderEditDialog";
 import WorkOrderAssignDialog from "./WorkOrderAssignDialog";
 import WorkOrderExecuteDialog from "./WorkOrderExecuteDialog";
+import { formatDateForDisplay } from "@/lib/utils"; // Importar a nova função
+
 
 const WorkOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -315,7 +317,7 @@ const WorkOrders = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Ordens Ativas</p>
-                <p className="text-2xl font-bold text-blue-600">{activeOrders.length}</p>
+                <p className="text-2xl font-bold">{activeOrders.length}</p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Clock className="h-6 w-6 text-blue-600" />
@@ -329,7 +331,7 @@ const WorkOrders = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Concluídas</p>
-                <p className="text-2xl font-bold text-green-600">{completedOrders.length}</p>
+                <p className="text-2xl font-bold">{completedOrders.length}</p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-green-600" />
@@ -343,7 +345,7 @@ const WorkOrders = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Canceladas</p>
-                <p className="text-2xl font-bold text-red-600">{cancelledOrders.length}</p>
+                <p className="text-2xl font-bold">{cancelledOrders.length}</p>
               </div>
               <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
@@ -467,7 +469,7 @@ const WorkOrders = () => {
                         <div>
                           <span className="text-gray-600">Agendada para:</span>
                           <div className="font-medium text-blue-600">
-                            {new Date(order.scheduled_date).toLocaleDateString('pt-BR')}
+                            {formatDateForDisplay(order.scheduled_date)} {/* Usando a nova função */}
                           </div>
                         </div>
                       )}
@@ -475,7 +477,7 @@ const WorkOrders = () => {
                         <div>
                           <span className="text-gray-600">Concluída em:</span>
                           <div className="font-medium text-green-600">
-                            {new Date(order.completed_date).toLocaleDateString('pt-BR')}
+                            {formatDateForDisplay(order.completed_date)} {/* Usando a nova função */}
                           </div>
                         </div>
                       )}

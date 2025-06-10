@@ -1,3 +1,4 @@
+// src/hooks/useMaintenancePlansData.ts
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -12,7 +13,11 @@ export interface MaintenancePlan {
   priority: 'low' | 'medium' | 'high' | 'critical';
   active: boolean;
   description?: string;
-  tasks?: string;
+  tasks?: string[] | null;
+  // NOVOS CAMPOS PARA PLANEJAMENTO AVANÇADO
+  end_date?: string | null; // Data de término do período de agendamento
+  schedule_days_of_week?: string[] | null; // Dias da semana para agendar (ex: ['monday', 'tuesday'])
+  // FIM NOVOS CAMPOS
   created_at: string;
   updated_at: string;
   equipment?: {
@@ -31,7 +36,11 @@ type CreateMaintenancePlanData = {
   priority?: 'low' | 'medium' | 'high' | 'critical';
   active?: boolean;
   description?: string;
-  tasks?: string;
+  tasks?: string[] | null;
+  // NOVOS CAMPOS PARA PLANEJAMENTO AVANÇADO
+  end_date?: string | null;
+  schedule_days_of_week?: string[] | null;
+  // FIM NOVOS CAMPOS
 };
 
 // Helper function to convert frequency string to days
@@ -90,6 +99,37 @@ export const useMaintenancePlansData = () => {
         ...item,
         priority: item.priority as MaintenancePlan['priority'],
         frequency: item.frequency_days ? daysToFrequency(item.frequency_days) : undefined,
+        // DESSERIALIZAR TASKS: Lógica mais robusta para converter string para array de strings
+        tasks: (() => {
+          if (item.tasks === null || typeof item.tasks === 'undefined') {
+            return null; // Se for null ou undefined, mantém null
+          }
+          if (Array.isArray(item.tasks)) {
+            return item.tasks; // Se já for um array, retorna-o
+          }
+          // Se for uma string, tenta parsear como JSON
+          if (typeof item.tasks === 'string') {
+            try {
+              const parsed = JSON.parse(item.tasks);
+              if (Array.isArray(parsed)) {
+                return parsed; // Se o parse for bem-sucedido e for um array, retorna-o
+              }
+              // Se o parse foi bem-sucedido mas não é um array (ex: '{"prop": "val"}'),
+              // ou se era uma string não-JSON, trata a string original como uma única tarefa.
+              return [item.tasks]; 
+            } catch (e) {
+              // Se o JSON.parse falhar (ex: string "ets" ou texto simples),
+              // trata a string original como uma única tarefa.
+              return [item.tasks];
+            }
+          }
+          // Em último caso, para tipos inesperados, retorna null ou um array vazio
+          return null; 
+        })(),
+        // DESSERIALIZAR NOVOS CAMPOS: Se forem armazenados como JSONB/TEXT e precisam de parse
+        end_date: item.end_date as string | null, // Assumindo que vem como string 'YYYY-MM-DD' ou null
+        schedule_days_of_week: item.schedule_days_of_week && typeof item.schedule_days_of_week === 'string' 
+          ? JSON.parse(item.schedule_days_of_week) : item.schedule_days_of_week, // Assumindo JSON string ou array
       }));
 
       setPlans(plansData);
@@ -107,7 +147,11 @@ export const useMaintenancePlansData = () => {
 
   const createPlan = async (planData: CreateMaintenancePlanData) => {
     try {
-      // Convert frequency string to days for database storage
+      // SERIALIZAR TASKS: Converter array de strings para JSON string para o banco de dados
+      const tasksToSave = planData.tasks ? JSON.stringify(planData.tasks) : null;
+      // SERIALIZAR DIAS DA SEMANA: Converter array para JSON string para o banco de dados
+      const daysToSave = planData.schedule_days_of_week ? JSON.stringify(planData.schedule_days_of_week) : null;
+
       const dbData = {
         name: planData.name,
         type: planData.type,
@@ -117,7 +161,9 @@ export const useMaintenancePlansData = () => {
         priority: planData.priority,
         active: planData.active,
         description: planData.description,
-        tasks: planData.tasks,
+        tasks: tasksToSave,
+        end_date: planData.end_date, // Envia diretamente (assumindo YYYY-MM-DD ou null)
+        schedule_days_of_week: daysToSave, // Envia a string JSON
       };
 
       const { data, error } = await supabase
@@ -137,6 +183,7 @@ export const useMaintenancePlansData = () => {
       }
 
       // Initialize schedule for the new plan if it has a frequency
+      // A lógica de inicialização/geração no SQL precisará ser atualizada para considerar end_date e schedule_days_of_week
       if (dbData.frequency_days) {
         await initializeScheduleForPlan(data.id);
       }
@@ -277,12 +324,21 @@ export const useMaintenancePlansData = () => {
   const updatePlan = async (id: string, planData: Partial<MaintenancePlan>) => {
     try {
       // Convert frequency string to days if frequency is being updated
-      const dbData = { ...planData };
+      const dbData: any = { ...planData };
       if (planData.frequency) {
         delete dbData.frequency;
-        (dbData as any).frequency_days = frequencyToDays(planData.frequency);
+        dbData.frequency_days = frequencyToDays(planData.frequency);
       }
 
+      // SERIALIZAR TASKS: Converter array de strings para JSON string para o banco de dados
+      if (planData.tasks !== undefined) {
+        dbData.tasks = planData.tasks ? JSON.stringify(planData.tasks) : null;
+      }
+      // SERIALIZAR DIAS DA SEMANA: Converter array para JSON string para o banco de dados
+      if (planData.schedule_days_of_week !== undefined) {
+        dbData.schedule_days_of_week = planData.schedule_days_of_week ? JSON.stringify(planData.schedule_days_of_week) : null;
+      }
+      
       const { data, error } = await supabase
         .from('maintenance_plans')
         .update(dbData)

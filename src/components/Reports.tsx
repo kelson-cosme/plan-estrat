@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,24 +9,69 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { Download, Share, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, Calendar, Filter } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("equipment");
   const [selectedPeriod, setSelectedPeriod] = useState("last-month");
   const [selectedChart, setSelectedChart] = useState("bar");
 
+  // --- BUSCA DE DADOS REAIS DO SUPABASE ---
+  const { data: workOrders = [], isLoading: isLoadingWorkOrders } = useQuery({
+    queryKey: ['reportsWorkOrders'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('work_orders').select('*');
+      if (error) {
+        console.error('Error fetching work orders for reports:', error);
+        return [];
+      }
+      return data;
+    }
+  });
+
+  const { data: equipmentList = [], isLoading: isLoadingEquipment } = useQuery({
+    queryKey: ['reportsEquipment'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('equipment').select('*');
+      if (error) {
+        console.error('Error fetching equipment for reports:', error);
+        return [];
+      }
+      return data;
+    }
+  });
+  // --- FIM DA BUSCA DE DADOS REAIS ---
+
+
+  // --- DADOS PROCESSADOS PARA GRÁFICOS (BASEADO EM DADOS REAIS E HARDCODED) ---
+
+  // Exemplo: Dados de Tipo de Manutenção (agora usando workOrders reais)
+  const maintenanceTypeData = useMemo(() => { // Variável definida como 'maintenanceTypeData'
+    const preventiveCount = workOrders.filter(order => order.type === 'preventiva').length;
+    const predictiveCount = workOrders.filter(order => order.type === 'preditiva').length;
+    const correctiveCount = workOrders.filter(order => order.type === 'corretiva').length;
+    const total = preventiveCount + predictiveCount + correctiveCount;
+
+    if (total === 0) {
+      return [{ name: "Nenhum dado", value: 100, color: "#CCCCCC" }];
+    }
+
+    return [
+      { name: "Preventiva", value: Math.round((preventiveCount / total) * 100), color: "#10B981" },
+      { name: "Preditiva", value: Math.round((predictiveCount / total) * 100), color: "#3B82F6" },
+      { name: "Corretiva", value: Math.round((correctiveCount / total) * 100), color: "#EF4444" },
+    ];
+  }, [workOrders]);
+
+
+  // DADOS HARDCODED ATUAIS - VOCÊ PRECISARÁ SUBSTITUÍ-LOS COM LÓGICA DE PROCESSAMENTO DE DADOS REAIS
   const equipmentPerformanceData = [
     { equipment: "Compressor AR-001", mtbf: 2340, mttr: 4.2, availability: 98.5, repairs: 5 },
     { equipment: "Motor EL-205", mtbf: 1890, mttr: 6.1, availability: 94.2, repairs: 8 },
     { equipment: "Bomba HY-102", mtbf: 1560, mttr: 8.5, availability: 89.8, repairs: 12 },
     { equipment: "Transformador TR-204", mtbf: 4200, mttr: 12.3, availability: 98.7, repairs: 2 },
     { equipment: "Esteira TR-01", mtbf: 1200, mttr: 3.2, availability: 92.1, repairs: 7 }
-  ];
-
-  const maintenanceTypeData = [
-    { name: "Preventiva", value: 65, color: "#10B981" },
-    { name: "Preditiva", value: 20, color: "#3B82F6" },
-    { name: "Corretiva", value: 15, color: "#EF4444" },
   ];
 
   const maintenanceCostData = [
@@ -54,6 +98,8 @@ const Reports = () => {
     { month: "Mai", availability: 95.8 },
     { month: "Jun", availability: 97.2 },
   ];
+  // --- FIM DOS DADOS HARDCODED ---
+
 
   const getMTBFColor = (mtbf: number) => {
     if (mtbf >= 3000) return "text-green-600";
@@ -75,6 +121,18 @@ const Reports = () => {
     if (availability >= 85) return "text-yellow-600";
     return "text-red-600";
   };
+
+  // Condição de carregamento geral
+  if (isLoadingWorkOrders || isLoadingEquipment) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2 mx-auto"></div>
+          <p>Carregando dados dos relatórios...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -164,7 +222,7 @@ const Reports = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   {selectedChart === "bar" ? (
                     <BarChart
-                      data={equipmentPerformanceData}
+                      data={equipmentPerformanceData} // AINDA HARDCODED
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -177,7 +235,7 @@ const Reports = () => {
                     </BarChart>
                   ) : (
                     <LineChart
-                      data={equipmentPerformanceData}
+                      data={equipmentPerformanceData} // AINDA HARDCODED
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -213,7 +271,7 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {equipmentPerformanceData.map((item, index) => (
+                    {equipmentPerformanceData.map((item, index) => ( // AINDA HARDCODED
                       <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : ""}>
                         <td className="py-3 px-4">{item.equipment}</td>
                         <td className={`text-center py-3 px-4 ${getMTBFColor(item.mtbf)} font-medium`}>{item.mtbf}h</td>
@@ -242,7 +300,7 @@ const Reports = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={maintenanceTypeData}
+                        data={maintenanceTypeData} // AGORA USA DADOS REAIS
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -251,7 +309,7 @@ const Reports = () => {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {maintenanceTypeData.map((entry, index) => (
+                        {maintenanceTypeData.map((entry, index) => ( // AGORA USA DADOS REAIS
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -269,7 +327,9 @@ const Reports = () => {
                           <div className="w-4 h-4 bg-green-500 rounded-sm mr-2"></div>
                           <span>Manutenção Preventiva</span>
                         </div>
-                        <span className="font-bold">65%</span>
+                        <span className="font-bold">
+                          {maintenanceTypeData.find(d => d.name === "Preventiva")?.value || 0}%
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">
                         Foco em manutenções planejadas, prevenindo falhas antes que ocorram.
@@ -282,7 +342,9 @@ const Reports = () => {
                           <div className="w-4 h-4 bg-blue-500 rounded-sm mr-2"></div>
                           <span>Manutenção Preditiva</span>
                         </div>
-                        <span className="font-bold">20%</span>
+                        <span className="font-bold">
+                          {maintenanceTypeData.find(d => d.name === "Preditiva")?.value || 0}%
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">
                         Monitoramento baseado em condições para predizer necessidades.
@@ -295,7 +357,9 @@ const Reports = () => {
                           <div className="w-4 h-4 bg-red-500 rounded-sm mr-2"></div>
                           <span>Manutenção Corretiva</span>
                         </div>
-                        <span className="font-bold">15%</span>
+                        <span className="font-bold">
+                          {maintenanceTypeData.find(d => d.name === "Corretiva")?.value || 0}%
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">
                         Reparos após falhas, indicando eficiência das outras estratégias.
@@ -317,7 +381,7 @@ const Reports = () => {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={availabilityTrendData}
+                      data={availabilityTrendData} // AINDA HARDCODED
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -340,7 +404,7 @@ const Reports = () => {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={maintenanceCostData}
+                      data={maintenanceCostData} // AINDA HARDCODED
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -370,7 +434,7 @@ const Reports = () => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={maintenanceCostData}
+                    data={maintenanceCostData} // AINDA HARDCODED
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -504,7 +568,7 @@ const Reports = () => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={failurePerSectorData}
+                    data={failurePerSectorData} // AINDA HARDCODED
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -546,7 +610,7 @@ const Reports = () => {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {maintenanceTypeData.map((entry, index) => (
+                        {maintenanceTypeData.map((entry, index) => ( // AINDA HARDCODED, mas usa maintenanceTypeData que agora é real
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>

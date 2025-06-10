@@ -1,3 +1,4 @@
+// src/integrations/supabase/types.ts
 export type Json =
   | string
   | number
@@ -100,9 +101,13 @@ export type Database = {
           id: string
           name: string
           priority: string | null
-          tasks: string | null
+          tasks: string | null // Assumindo que tasks é armazenado como JSON string (texto) ou text puro no DB
           type: string
           updated_at: string
+          // NOVOS CAMPOS ADICIONADOS AQUI
+          end_date: string | null // Adicionado: para a data de término do agendamento
+          schedule_days_of_week: string | null // Adicionado: para os dias da semana (ex: '["monday", "friday"]') - armazenado como JSON string ou array de texto
+          // FIM DOS NOVOS CAMPOS
         }
         Insert: {
           active?: boolean | null
@@ -117,6 +122,10 @@ export type Database = {
           tasks?: string | null
           type: string
           updated_at?: string
+          // NOVOS CAMPOS ADICIONADOS AQUI
+          end_date?: string | null
+          schedule_days_of_week?: string | null
+          // FIM DOS NOVOS CAMPOS
         }
         Update: {
           active?: boolean | null
@@ -131,6 +140,10 @@ export type Database = {
           tasks?: string | null
           type?: string
           updated_at?: string
+          // NOVOS CAMPOS ADICIONADOS AQUI
+          end_date?: string | null
+          schedule_days_of_week?: string | null
+          // FIM DOS NOVOS CAMPOS
         }
         Relationships: [
           {
@@ -384,4 +397,4 @@ export const Constants = {
   public: {
     Enums: {},
   },
-} as const
+} as const;

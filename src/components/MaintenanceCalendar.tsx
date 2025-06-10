@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Calendar as CalendarIcon, Clock, User, Wrench, AlertTriangle, CheckCircle, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { formatDateForDisplay } from "@/lib/utils"; // Importar a nova função formatDateForDisplay
 
 interface MaintenanceEvent {
   id: string;
@@ -29,65 +30,7 @@ const MaintenanceCalendar = () => {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Buscar dados reais do Supabase
-  const fetchMaintenanceData = async () => {
-    try {
-      const { data: workOrders, error } = await supabase
-        .from('work_orders')
-        .select(`
-          *,
-          equipment:equipment_id (name, code),
-          assigned_to_profile:assigned_to (full_name)
-        `)
-        .order('scheduled_date');
-
-      if (error) {
-        console.error('Error fetching work orders:', error);
-        toast({
-          title: "Erro ao carregar ordens de serviço",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Converter dados para o formato do componente
-      const events: MaintenanceEvent[] = workOrders?.map(order => ({
-        id: order.id,
-        title: order.title,
-        date: order.scheduled_date || new Date().toISOString().split('T')[0],
-        time: "08:00", // Valor padrão, pode ser estendido no futuro
-        duration: `${order.estimated_hours || 2}h`,
-        type: order.type === 'preventiva' ? 'Preventiva' : 
-              order.type === 'preditiva' ? 'Preditiva' : 'Corretiva',
-        technician: order.assigned_to_profile?.full_name || 'Não atribuído',
-        equipment: order.equipment?.name || 'Equipamento desconhecido',
-        status: order.status === 'open' ? 'Agendado' :
-                order.status === 'in_progress' ? 'Em Andamento' :
-                order.status === 'completed' ? 'Concluído' : 'Cancelado',
-        priority: order.priority === 'low' ? 'Baixa' :
-                  order.priority === 'medium' ? 'Média' :
-                  order.priority === 'high' ? 'Alta' : 'Crítica',
-        description: order.description,
-      })) || [];
-
-      setMaintenanceEvents(events);
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Erro ao carregar dados",
-        description: "Erro inesperado ao carregar ordens de serviço",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMaintenanceData();
-  }, []);
+  const [modifiers, setModifiers] = useState<any>({});
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -118,6 +61,81 @@ const MaintenanceCalendar = () => {
     }
   };
 
+  // Helper para criar um objeto Date no fuso horário local a partir de uma string YYYY-MM-DD
+  const createLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // Mês é baseado em zero (0=Janeiro)
+  };
+
+  const fetchMaintenanceData = async () => {
+    try {
+      const { data: workOrders, error } = await supabase
+        .from('work_orders')
+        .select(`
+          *,
+          equipment:equipment_id (name, code),
+          assigned_to_profile:assigned_to (full_name)
+        `)
+        .order('scheduled_date');
+
+      if (error) {
+        console.error('Error fetching work orders:', error);
+        toast({
+          title: "Erro ao carregar ordens de serviço",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const events: MaintenanceEvent[] = workOrders?.map(order => ({
+        id: order.id,
+        title: order.title,
+        date: order.scheduled_date || new Date().toISOString().split('T')[0],
+        time: "08:00",
+        duration: `${order.estimated_hours || 2}h`,
+        type: order.type === 'preventiva' ? 'Preventiva' : 
+              order.type === 'preditiva' ? 'Preditiva' : 'Corretiva',
+        technician: order.assigned_to_profile?.full_name || 'Não atribuído',
+        equipment: order.equipment?.name || 'Equipamento desconhecido',
+        status: order.status === 'open' ? 'Agendado' :
+                order.status === 'in_progress' ? 'Em Andamento' :
+                order.status === 'completed' ? 'Concluído' : 'Cancelado',
+        priority: order.priority === 'low' ? 'Baixa' :
+                  order.priority === 'medium' ? 'Média' :
+                  order.priority === 'high' ? 'Alta' : 'Crítica',
+        description: order.description,
+      })) || [];
+
+      setMaintenanceEvents(events);
+
+      // Criar datas para modificadores usando createLocalDate
+      const preventiveDays = events.filter(e => e.type === 'Preventiva').map(e => createLocalDate(e.date));
+      const predictiveDays = events.filter(e => e.type === 'Preditiva').map(e => createLocalDate(e.date));
+      const correctiveDays = events.filter(e => e.type === 'Corretiva').map(e => createLocalDate(e.date));
+
+      setModifiers({
+        preventive: preventiveDays,
+        predictive: predictiveDays,
+        corrective: correctiveDays,
+      });
+
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Erro inesperado ao carregar ordens de serviço",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaintenanceData();
+  }, []);
+
   const filteredEvents = maintenanceEvents.filter(event => {
     if (selectedFilter === "all") return true;
     return event.type.toLowerCase() === selectedFilter;
@@ -128,8 +146,8 @@ const MaintenanceCalendar = () => {
   );
 
   const upcomingEvents = maintenanceEvents.filter(event => {
-    const eventDate = new Date(event.date);
-    const today = new Date();
+    const eventDate = createLocalDate(event.date); // Usar createLocalDate aqui também
+    const today = createLocalDate(new Date().toISOString().split('T')[0]); // E aqui
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     return eventDate >= tomorrow;
@@ -148,7 +166,6 @@ const MaintenanceCalendar = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Controls */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -185,7 +202,6 @@ const MaintenanceCalendar = () => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Widget */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -198,10 +214,15 @@ const MaintenanceCalendar = () => {
               mode="single"
               selected={date}
               onSelect={setDate}
+              modifiers={modifiers}
+              modifiersClassNames={{
+                preventive: "bg-green-200 text-green-900 rounded-full",
+                predictive: "bg-blue-200 text-blue-900 rounded-full",
+                corrective: "bg-red-200 text-red-900 rounded-full",
+              }}
               className="rounded-md border pointer-events-auto"
             />
             
-            {/* Legend */}
             <div className="mt-4 space-y-2">
               <h4 className="text-sm font-medium">Legenda:</h4>
               <div className="space-y-1">
@@ -222,7 +243,6 @@ const MaintenanceCalendar = () => {
           </CardContent>
         </Card>
 
-        {/* Events List */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Manutenções Programadas</CardTitle>
@@ -250,7 +270,7 @@ const MaintenanceCalendar = () => {
                       <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                         <div className="flex items-center">
                           <CalendarIcon className="w-4 h-4 mr-1" />
-                          {new Date(event.date).toLocaleDateString('pt-BR')}
+                          {formatDateForDisplay(event.date)} {/* Usando a nova função para exibição */}
                         </div>
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
@@ -290,7 +310,7 @@ const MaintenanceCalendar = () => {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-600">Data e Hora</label>
-                          <p className="text-sm">{new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}</p>
+                          <p className="text-sm">{formatDateForDisplay(event.date)} às {event.time}</p> {/* Usando a nova função para exibição */}
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-600">Duração</label>
@@ -331,9 +351,7 @@ const MaintenanceCalendar = () => {
         </Card>
       </div>
 
-      {/* Today's Events and Upcoming */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Events */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -367,7 +385,6 @@ const MaintenanceCalendar = () => {
           </CardContent>
         </Card>
 
-        {/* Upcoming Events */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -383,7 +400,7 @@ const MaintenanceCalendar = () => {
                     <div>
                       <p className="font-medium text-sm">{event.title}</p>
                       <p className="text-xs text-gray-600">
-                        {new Date(event.date).toLocaleDateString('pt-BR')} - {event.technician}
+                        {formatDateForDisplay(event.date)} - {event.technician} {/* Usando a nova função para exibição */}
                       </p>
                     </div>
                     <Badge className={`text-xs ${getTypeColor(event.type)}`}>

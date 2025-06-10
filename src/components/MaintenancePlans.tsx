@@ -1,3 +1,4 @@
+// src/components/MaintenancePlans.tsx
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,33 +9,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause, Settings } from "lucide-react";
-import { useMaintenancePlansData } from "@/hooks/useMaintenancePlansData";
+import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause, Settings, XCircle } from "lucide-react";
+import { useMaintenancePlansData, MaintenancePlan as MaintenancePlanType } from "@/hooks/useMaintenancePlansData";
 import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import MaintenanceScheduler from "./MaintenanceScheduler";
+import MaintenancePlanEditDialog from "./MaintenancePlanEditDialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // Importar ToggleGroup
 
 const MaintenancePlans = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [showScheduler, setShowScheduler] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [selectedPlanForSchedule, setSelectedPlanForSchedule] = useState<MaintenancePlanType | null>(null);
+  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<MaintenancePlanType | null>(null);
   const [scheduledDate, setScheduledDate] = useState("");
   const [newPlan, setNewPlan] = useState({
     name: "",
     type: "",
     equipment_id: "",
     frequency: "",
-    tasks: "",
+    tasks: [] as string[],
     priority: "medium",
-    description: ""
+    description: "",
+    end_date: "" as string | null, // NOVO CAMPO
+    schedule_days_of_week: [] as string[], // NOVO CAMPO
   });
+  const [newTaskInput, setNewTaskInput] = useState("");
 
   const { plans, loading, createPlan, updatePlan, deletePlan } = useMaintenancePlansData();
   const { createWorkOrder } = useWorkOrders();
+
+  const daysOfWeekOptions = [
+    { value: 'sunday', label: 'Dom' },
+    { value: 'monday', label: 'Seg' },
+    { value: 'tuesday', label: 'Ter' },
+    { value: 'wednesday', label: 'Qua' },
+    { value: 'thursday', label: 'Qui' },
+    { value: 'friday', label: 'Sex' },
+    { value: 'saturday', label: 'Sáb' },
+  ];
 
   // Fetch equipment data for the select dropdown
   const { data: equipment = [] } = useQuery({
@@ -49,6 +66,23 @@ const MaintenancePlans = () => {
     }
   });
 
+  const handleAddTask = () => {
+    if (newTaskInput.trim() !== "") {
+      setNewPlan(prev => ({
+        ...prev,
+        tasks: [...prev.tasks, newTaskInput.trim()]
+      }));
+      setNewTaskInput("");
+    }
+  };
+
+  const handleRemoveTask = (indexToRemove: number) => {
+    setNewPlan(prev => ({
+      ...prev,
+      tasks: prev.tasks.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
   const handleCreatePlan = async () => {
     if (!newPlan.name || !newPlan.type) {
       toast({
@@ -59,14 +93,27 @@ const MaintenancePlans = () => {
       return;
     }
 
+    // Validação básica para agendamento diário sem fins de semana com período
+    if (newPlan.frequency === 'diaria' && newPlan.end_date && newPlan.schedule_days_of_week.length === 0) {
+      toast({
+        title: "Atenção",
+        description: "Para frequência diária com período, selecione os dias da semana.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+
     const planData = {
       name: newPlan.name,
       type: newPlan.type,
       equipment_id: newPlan.equipment_id || undefined,
       frequency: newPlan.frequency || undefined,
-      tasks: newPlan.tasks || undefined,
+      tasks: newPlan.tasks.length > 0 ? newPlan.tasks : null,
       priority: newPlan.priority as 'low' | 'medium' | 'high' | 'critical',
       description: newPlan.description || undefined,
+      end_date: newPlan.end_date || null, // NOVO CAMPO
+      schedule_days_of_week: newPlan.schedule_days_of_week.length > 0 ? newPlan.schedule_days_of_week : null, // NOVO CAMPO
       active: true
     };
 
@@ -78,14 +125,17 @@ const MaintenancePlans = () => {
         type: "",
         equipment_id: "",
         frequency: "",
-        tasks: "",
+        tasks: [],
         priority: "medium",
-        description: ""
+        description: "",
+        end_date: null,
+        schedule_days_of_week: [],
       });
+      setNewTaskInput("");
     }
   };
 
-  const handleToggleActive = async (plan: any) => {
+  const handleToggleActive = async (plan: MaintenancePlanType) => {
     await updatePlan(plan.id, { active: !plan.active });
   };
 
@@ -95,16 +145,24 @@ const MaintenancePlans = () => {
     }
   };
 
-  const handleSchedulePlan = (plan: any) => {
-    setSelectedPlan(plan);
+  const handleEditPlan = (plan: MaintenancePlanType) => {
+    setSelectedPlanForEdit(plan);
+  };
+
+  const handleCloseEditDialog = () => {
+    setSelectedPlanForEdit(null);
+  };
+
+  const handleSchedulePlan = (plan: MaintenancePlanType) => {
+    setSelectedPlanForSchedule(plan);
     setIsScheduleDialogOpen(true);
   };
 
-  const handleExecutePlan = async (plan: any) => {
+  const handleExecutePlan = async (plan: MaintenancePlanType) => {
     const workOrderData = {
       title: `Execução: ${plan.name}`,
       type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
-      description: plan.description || plan.tasks || `Execução do plano de manutenção: ${plan.name}`,
+      description: plan.description || (plan.tasks ? plan.tasks.join('\n') : null) || `Execução do plano de manutenção: ${plan.name}`,
       priority: plan.priority,
       status: 'in_progress' as const,
       equipment_id: plan.equipment_id,
@@ -123,7 +181,7 @@ const MaintenancePlans = () => {
   };
 
   const handleCreateScheduledOrder = async () => {
-    if (!selectedPlan || !scheduledDate) {
+    if (!selectedPlanForSchedule || !scheduledDate) {
       toast({
         title: "Erro",
         description: "Data de agendamento é obrigatória",
@@ -133,15 +191,15 @@ const MaintenancePlans = () => {
     }
 
     const workOrderData = {
-      title: `Agendamento: ${selectedPlan.name}`,
-      type: selectedPlan.type as 'preventiva' | 'preditiva' | 'corretiva',
-      description: selectedPlan.description || selectedPlan.tasks || `Agendamento do plano de manutenção: ${selectedPlan.name}`,
-      priority: selectedPlan.priority,
+      title: `Agendamento: ${selectedPlanForSchedule.name}`,
+      type: selectedPlanForSchedule.type as 'preventiva' | 'preditiva' | 'corretiva',
+      description: selectedPlanForSchedule.description || (selectedPlanForSchedule.tasks ? selectedPlanForSchedule.tasks.join('\n') : null) || `Agendamento do plano de manutenção: ${selectedPlanForSchedule.name}`,
+      priority: selectedPlanForSchedule.priority,
       status: 'open' as const,
-      equipment_id: selectedPlan.equipment_id,
-      maintenance_plan_id: selectedPlan.id,
+      equipment_id: selectedPlanForSchedule.equipment_id,
+      maintenance_plan_id: selectedPlanForSchedule.id,
       scheduled_date: scheduledDate,
-      estimated_hours: selectedPlan.estimated_duration_hours
+      estimated_hours: selectedPlanForSchedule.estimated_duration_hours
     };
 
     const result = await createWorkOrder(workOrderData);
@@ -151,7 +209,7 @@ const MaintenancePlans = () => {
         description: `Ordem agendada para ${new Date(scheduledDate).toLocaleDateString('pt-BR')}`,
       });
       setIsScheduleDialogOpen(false);
-      setSelectedPlan(null);
+      setSelectedPlanForSchedule(null);
       setScheduledDate("");
     }
   };
@@ -311,14 +369,69 @@ const MaintenancePlans = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* NOVO CAMPO: Data de Término */}
+                    <div className="space-y-2">
+                      <Label htmlFor="end-date">Data de Término (Opcional)</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={newPlan.end_date || ''}
+                        onChange={(e) => setNewPlan({...newPlan, end_date: e.target.value})}
+                      />
+                    </div>
+                    {/* NOVO CAMPO: Dias da Semana */}
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="schedule-days-of-week">Dias da Semana (Para agendamentos diários)</Label>
+                      <ToggleGroup
+                        type="multiple"
+                        value={newPlan.schedule_days_of_week}
+                        onValueChange={(value: string[]) => setNewPlan({...newPlan, schedule_days_of_week: value})}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {daysOfWeekOptions.map(day => (
+                          <ToggleGroupItem key={day.value} value={day.value} aria-label={day.label}>
+                            {day.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      <p className="text-sm text-muted-foreground">Selecione os dias em que a manutenção deve ocorrer.</p>
+                    </div>
+
                     <div className="col-span-2 space-y-2">
                       <Label htmlFor="tasks">Tarefas do Plano</Label>
-                      <Textarea 
-                        id="tasks" 
-                        placeholder="Descreva as tarefas que devem ser executadas..." 
-                        value={newPlan.tasks}
-                        onChange={(e) => setNewPlan({...newPlan, tasks: e.target.value})}
-                      />
+                      <div className="flex space-x-2">
+                        <Input
+                          id="new-task-input"
+                          placeholder="Adicionar nova tarefa"
+                          value={newTaskInput}
+                          onChange={(e) => setNewTaskInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTask();
+                            }
+                          }}
+                        />
+                        <Button type="button" onClick={handleAddTask}>Adicionar</Button>
+                      </div>
+                      <div className="space-y-1">
+                        {newPlan.tasks.map((task, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                            <span className="text-sm">{task}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveTask(index)}
+                            >
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {newPlan.tasks.length === 0 && (
+                        <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada.</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex justify-end space-x-2">
@@ -426,7 +539,7 @@ const MaintenancePlans = () => {
                         >
                           {plan.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditPlan(plan)}>
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button 
@@ -472,6 +585,24 @@ const MaintenancePlans = () => {
                         </Badge>
                       </div>
                     )}
+
+                    {/* Exibir novos campos */}
+                    {plan.end_date && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Data de Término:</span>
+                        <span className="text-sm font-medium">
+                          {new Date(plan.end_date).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
+                    {plan.schedule_days_of_week && plan.schedule_days_of_week.length > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Dias Agendados:</span>
+                        <span className="text-sm font-medium">
+                          {plan.schedule_days_of_week.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')}
+                        </span>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -488,10 +619,14 @@ const MaintenancePlans = () => {
                       </div>
                     </div>
 
-                    {plan.tasks && (
+                    {plan.tasks && plan.tasks.length > 0 && (
                       <div className="pt-3 border-t">
                         <p className="text-sm text-gray-600 mb-1">Tarefas:</p>
-                        <p className="text-sm">{plan.tasks}</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {plan.tasks.map((task, index) => (
+                            <li key={index}>{task}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 
@@ -536,7 +671,7 @@ const MaintenancePlans = () => {
           <DialogHeader>
             <DialogTitle>Agendar Plano de Manutenção</DialogTitle>
             <DialogDescription>
-              Selecione a data para agendar a execução do plano "{selectedPlan?.name}"
+              Selecione a data para agendar a execução do plano "{selectedPlanForSchedule?.name}"
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -561,6 +696,14 @@ const MaintenancePlans = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MaintenancePlanEditDialog */}
+      <MaintenancePlanEditDialog
+        plan={selectedPlanForEdit}
+        isOpen={!!selectedPlanForEdit}
+        onClose={handleCloseEditDialog}
+        onUpdate={updatePlan}
+      />
     </div>
   );
 };

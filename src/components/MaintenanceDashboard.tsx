@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -84,7 +83,7 @@ const MaintenanceDashboard = () => {
     .map((wo, index) => ({
       id: wo.id,
       equipment: equipment.find(eq => eq.id === wo.equipment_id)?.name || 'Equipamento não encontrado',
-      type: wo.type === 'preventive' ? 'Preventiva' : wo.type === 'predictive' ? 'Preditiva' : 'Corretiva',
+      type: wo.type === 'preventiva' ? 'Preventiva' : wo.type === 'preditiva' ? 'Preditiva' : 'Corretiva',
       date: wo.scheduled_date ? new Date(wo.scheduled_date).toLocaleDateString('pt-BR') : 'Não agendado',
       technician: 'Técnico Responsável'
     }));
@@ -110,11 +109,12 @@ const MaintenanceDashboard = () => {
           const monthIndex = date.getMonth();
           const monthData = monthlyStats[monthIndex];
           
-          if (wo.type === 'preventive') {
+          // CORREÇÃO: Comparar com as strings em português
+          if (wo.type === 'preventiva') { 
             monthData.preventiva++;
-          } else if (wo.type === 'corrective') {
+          } else if (wo.type === 'corretiva') { 
             monthData.corretiva++;
-          } else if (wo.type === 'predictive') {
+          } else if (wo.type === 'preditiva') { 
             monthData.preditiva++;
           }
         }
