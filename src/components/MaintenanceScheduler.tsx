@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,6 +100,16 @@ const MaintenanceScheduler = () => {
     if (diffDays === 1) return "Amanhã";
     if (diffDays <= 7) return `${diffDays} dias`;
     return "Futuro";
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -236,14 +245,18 @@ const MaintenanceScheduler = () => {
                       {getStatusText(schedule.next_scheduled_date)}
                     </Badge>
                     <div className="text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {new Date(schedule.next_scheduled_date).toLocaleDateString('pt-BR')}
+                      <div className="flex items-center justify-end">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        <div>
+                          <p className="font-medium">Próxima manutenção:</p>
+                          <p className="text-sm">{formatDateForDisplay(schedule.next_scheduled_date)}</p>
+                        </div>
                       </div>
                     </div>
                     {schedule.last_generated_date && (
-                      <div className="text-xs text-gray-500">
-                        Último: {new Date(schedule.last_generated_date).toLocaleDateString('pt-BR')}
+                      <div className="text-xs text-gray-500 flex items-center justify-end">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Última geração: {new Date(schedule.last_generated_date).toLocaleDateString('pt-BR')}
                       </div>
                     )}
                   </div>
