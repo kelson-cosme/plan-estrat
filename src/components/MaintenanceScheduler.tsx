@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MaintenanceScheduler = () => {
   const { initializeAllSchedules, generateScheduledOrders } = useMaintenancePlansData();
-  const { refetch: refetchWorkOrders } = useWorkOrders();
+  const { workOrders, refetch: refetchWorkOrders } = useWorkOrders();
 
   // Fetch schedule data
   const { data: schedules = [], refetch: refetchSchedules } = useQuery({
@@ -39,17 +39,32 @@ const MaintenanceScheduler = () => {
   });
 
   const handleInitializeSchedules = async () => {
+    console.log('🔧 Inicializando agendamentos...');
     const success = await initializeAllSchedules();
     if (success) {
+      console.log('✅ Agendamentos inicializados com sucesso');
       refetchSchedules();
+    } else {
+      console.log('❌ Erro ao inicializar agendamentos');
     }
   };
 
   const handleGenerateOrders = async () => {
+    console.log('🚀 Gerando ordens agendadas...');
+    console.log('📊 Total de ordens antes:', workOrders.length);
+    
     const success = await generateScheduledOrders();
     if (success) {
-      refetchSchedules();
-      refetchWorkOrders(); // Atualiza as ordens de serviço também
+      console.log('✅ Ordens geradas com sucesso');
+      
+      // Aguardar um pouco antes de atualizar
+      setTimeout(async () => {
+        await refetchSchedules();
+        await refetchWorkOrders();
+        console.log('🔄 Dados atualizados');
+      }, 1000);
+    } else {
+      console.log('❌ Erro ao gerar ordens agendadas');
     }
   };
 
@@ -116,6 +131,16 @@ const MaintenanceScheduler = () => {
             </div>
           </div>
         </CardHeader>
+        <CardContent>
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Debug Info:</strong> Total de ordens de serviço no sistema: {workOrders.length}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Verifique o console do navegador (F12) para logs detalhados
+            </p>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Statistics */}
@@ -232,3 +257,5 @@ const MaintenanceScheduler = () => {
 };
 
 export default MaintenanceScheduler;
+
+</initial_code>

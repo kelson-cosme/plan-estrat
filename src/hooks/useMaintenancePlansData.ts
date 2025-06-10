@@ -181,10 +181,11 @@ export const useMaintenancePlansData = () => {
 
   const initializeAllSchedules = async () => {
     try {
+      console.log('🔧 Chamando função initialize_maintenance_schedules...');
       const { error } = await supabase.rpc('initialize_maintenance_schedules');
       
       if (error) {
-        console.error('Error initializing schedules:', error);
+        console.error('❌ Erro ao inicializar agendamentos:', error);
         toast({
           title: "Erro ao inicializar agendamentos",
           description: error.message,
@@ -193,6 +194,7 @@ export const useMaintenancePlansData = () => {
         return false;
       }
 
+      console.log('✅ Agendamentos inicializados com sucesso');
       toast({
         title: "Agendamentos inicializados",
         description: "Agendamentos automáticos foram configurados para os planos ativos",
@@ -200,7 +202,7 @@ export const useMaintenancePlansData = () => {
       
       return true;
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Erro inesperado:', error);
       toast({
         title: "Erro ao inicializar agendamentos",
         description: "Erro inesperado ao inicializar agendamentos",
@@ -212,10 +214,40 @@ export const useMaintenancePlansData = () => {
 
   const generateScheduledOrders = async () => {
     try {
+      console.log('🚀 Chamando função generate_scheduled_work_orders...');
+      
+      // Primeiro, vamos verificar se há agendamentos para gerar
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('maintenance_plan_schedules')
+        .select(`
+          *,
+          maintenance_plans:maintenance_plan_id (
+            id,
+            name,
+            active
+          )
+        `)
+        .lte('next_scheduled_date', new Date().toISOString().split('T')[0]);
+
+      if (schedulesError) {
+        console.error('❌ Erro ao verificar agendamentos:', schedulesError);
+        return false;
+      }
+
+      console.log('📊 Agendamentos elegíveis para geração:', schedulesData?.length || 0);
+      
+      if (!schedulesData || schedulesData.length === 0) {
+        toast({
+          title: "Nenhum agendamento devido",
+          description: "Não há agendamentos que precisem gerar ordens hoje",
+        });
+        return true;
+      }
+
       const { error } = await supabase.rpc('generate_scheduled_work_orders');
       
       if (error) {
-        console.error('Error generating scheduled orders:', error);
+        console.error('❌ Erro ao gerar ordens agendadas:', error);
         toast({
           title: "Erro ao gerar ordens agendadas",
           description: error.message,
@@ -224,14 +256,15 @@ export const useMaintenancePlansData = () => {
         return false;
       }
 
+      console.log('✅ Ordens geradas com sucesso');
       toast({
         title: "Ordens geradas",
-        description: "Novas ordens de serviço foram geradas automaticamente",
+        description: `${schedulesData.length} nova(s) ordem(ns) de serviço foram geradas automaticamente`,
       });
       
       return true;
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Erro inesperado:', error);
       toast({
         title: "Erro ao gerar ordens",
         description: "Erro inesperado ao gerar ordens agendadas",
