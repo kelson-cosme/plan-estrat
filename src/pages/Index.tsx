@@ -1,5 +1,4 @@
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,10 @@ const Index = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // --- NOVOS ESTADOS ---
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [workOrderPrefill, setWorkOrderPrefill] = useState<any>(null);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
@@ -32,14 +35,33 @@ const Index = () => {
     });
     navigate("/auth");
   };
+  
+  // --- NOVA FUNÇÃO ---
+  // Recebe os dados do calendário, prepara para o formulário e troca de aba
+  const handleNavigateAndPrefill = (scheduleData: any) => {
+    const plan = scheduleData.maintenance_plans;
+    if (!plan) return;
+
+    const prefill = {
+      title: `Execução Manual: ${plan.name}`,
+      description: plan.description || (Array.isArray(plan.tasks) ? plan.tasks.join('\n') : ''),
+      type: plan.type,
+      priority: plan.priority,
+      equipment_id: plan.equipment?.id, // Garante que o ID do equipamento seja passado
+      maintenance_plan_id: scheduleData.maintenance_plan_id,
+      scheduled_date: scheduleData.next_scheduled_date,
+    };
+    
+    setWorkOrderPrefill(prefill);
+    setActiveTab("work-orders");
+  };
+
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
-          <p>Carregando sistema...</p>
-        </div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
+        <p>Carregando sistema...</p>
       </div>
     );
   }
@@ -75,9 +97,9 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - TABS AGORA SÃO CONTROLADOS */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="calendar">Calendário</TabsTrigger>
@@ -92,7 +114,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="calendar">
-            <MaintenanceCalendar />
+            <MaintenanceCalendar onGenerateOrder={handleNavigateAndPrefill} />
           </TabsContent>
 
           <TabsContent value="equipment">
@@ -104,7 +126,10 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="work-orders">
-            <WorkOrders />
+            <WorkOrders 
+              prefillData={workOrderPrefill}
+              onPrefillHandled={() => setWorkOrderPrefill(null)}
+            />
           </TabsContent>
 
           <TabsContent value="reports">
