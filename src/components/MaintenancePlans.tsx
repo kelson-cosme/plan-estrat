@@ -566,5 +566,3 @@ const MaintenancePlans = () => {
 };
 
 export default MaintenancePlans;
-
-}
