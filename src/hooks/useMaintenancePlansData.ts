@@ -136,6 +136,11 @@ export const useMaintenancePlansData = () => {
         return null;
       }
 
+      // Initialize schedule for the new plan if it has a frequency
+      if (dbData.frequency_days) {
+        await initializeScheduleForPlan(data.id);
+      }
+
       toast({
         title: "Plano criado",
         description: "Plano de manutenção criado com sucesso",
@@ -151,6 +156,88 @@ export const useMaintenancePlansData = () => {
         variant: "destructive",
       });
       return null;
+    }
+  };
+
+  const initializeScheduleForPlan = async (planId: string) => {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 1); // Start from tomorrow
+
+      const { error } = await supabase
+        .from('maintenance_plan_schedules')
+        .insert({
+          maintenance_plan_id: planId,
+          next_scheduled_date: startDate.toISOString().split('T')[0]
+        });
+
+      if (error) {
+        console.error('Error initializing schedule:', error);
+      }
+    } catch (error) {
+      console.error('Error initializing schedule:', error);
+    }
+  };
+
+  const initializeAllSchedules = async () => {
+    try {
+      const { error } = await supabase.rpc('initialize_maintenance_schedules');
+      
+      if (error) {
+        console.error('Error initializing schedules:', error);
+        toast({
+          title: "Erro ao inicializar agendamentos",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      toast({
+        title: "Agendamentos inicializados",
+        description: "Agendamentos automáticos foram configurados para os planos ativos",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Erro ao inicializar agendamentos",
+        description: "Erro inesperado ao inicializar agendamentos",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const generateScheduledOrders = async () => {
+    try {
+      const { error } = await supabase.rpc('generate_scheduled_work_orders');
+      
+      if (error) {
+        console.error('Error generating scheduled orders:', error);
+        toast({
+          title: "Erro ao gerar ordens agendadas",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      toast({
+        title: "Ordens geradas",
+        description: "Novas ordens de serviço foram geradas automaticamente",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Erro ao gerar ordens",
+        description: "Erro inesperado ao gerar ordens agendadas",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -244,5 +331,7 @@ export const useMaintenancePlansData = () => {
     updatePlan,
     deletePlan,
     refetch: fetchPlans,
+    initializeAllSchedules,
+    generateScheduledOrders,
   };
 };

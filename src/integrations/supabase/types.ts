@@ -54,6 +54,41 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_plan_schedules: {
+        Row: {
+          created_at: string
+          id: string
+          last_generated_date: string | null
+          maintenance_plan_id: string
+          next_scheduled_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_generated_date?: string | null
+          maintenance_plan_id: string
+          next_scheduled_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_generated_date?: string | null
+          maintenance_plan_id?: string
+          next_scheduled_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_plan_schedules_maintenance_plan_id_fkey"
+            columns: ["maintenance_plan_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_plans: {
         Row: {
           active: boolean | null
@@ -218,9 +253,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_scheduled_work_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      initialize_maintenance_schedules: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

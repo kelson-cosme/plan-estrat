@@ -8,15 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause } from "lucide-react";
+import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause, Settings } from "lucide-react";
 import { useMaintenancePlansData } from "@/hooks/useMaintenancePlansData";
 import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import MaintenanceScheduler from "./MaintenanceScheduler";
 
 const MaintenancePlans = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const [showScheduler, setShowScheduler] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
@@ -209,6 +211,21 @@ const MaintenancePlans = () => {
     );
   }
 
+  if (showScheduler) {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowScheduler(false)}
+          className="mb-4"
+        >
+          ← Voltar aos Planos
+        </Button>
+        <MaintenanceScheduler />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -219,91 +236,100 @@ const MaintenancePlans = () => {
               <CardTitle>Planos de Manutenção</CardTitle>
               <CardDescription>Gestão estratégica de ciclos de manutenção</CardDescription>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Plano
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Criar Novo Plano de Manutenção</DialogTitle>
-                  <DialogDescription>
-                    Configure um novo plano estratégico de manutenção
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="plan-name">Nome do Plano</Label>
-                    <Input 
-                      id="plan-name" 
-                      placeholder="Ex: Lubrificação Mensal" 
-                      value={newPlan.name}
-                      onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="plan-type">Tipo de Manutenção</Label>
-                    <Select value={newPlan.type} onValueChange={(value) => setNewPlan({...newPlan, type: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="preventiva">Preventiva</SelectItem>
-                        <SelectItem value="preditiva">Preditiva</SelectItem>
-                        <SelectItem value="corretiva">Corretiva</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="equipment">Equipamento</Label>
-                    <Select value={newPlan.equipment_id} onValueChange={(value) => setNewPlan({...newPlan, equipment_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o equipamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipment.map((eq) => (
-                          <SelectItem key={eq.id} value={eq.id}>
-                            {eq.name} ({eq.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="frequency">Frequência</Label>
-                    <Select value={newPlan.frequency} onValueChange={(value) => setNewPlan({...newPlan, frequency: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a frequência" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="diaria">Diária</SelectItem>
-                        <SelectItem value="semanal">Semanal</SelectItem>
-                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                        <SelectItem value="mensal">Mensal</SelectItem>
-                        <SelectItem value="anual">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="tasks">Tarefas do Plano</Label>
-                    <Textarea 
-                      id="tasks" 
-                      placeholder="Descreva as tarefas que devem ser executadas..." 
-                      value={newPlan.tasks}
-                      onChange={(e) => setNewPlan({...newPlan, tasks: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancelar
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline"
+                onClick={() => setShowScheduler(true)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Agendamentos Automáticos
+              </Button>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Plano
                   </Button>
-                  <Button onClick={handleCreatePlan}>Criar Plano</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Criar Novo Plano de Manutenção</DialogTitle>
+                    <DialogDescription>
+                      Configure um novo plano estratégico de manutenção
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan-name">Nome do Plano</Label>
+                      <Input 
+                        id="plan-name" 
+                        placeholder="Ex: Lubrificação Mensal" 
+                        value={newPlan.name}
+                        onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan-type">Tipo de Manutenção</Label>
+                      <Select value={newPlan.type} onValueChange={(value) => setNewPlan({...newPlan, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="preventiva">Preventiva</SelectItem>
+                          <SelectItem value="preditiva">Preditiva</SelectItem>
+                          <SelectItem value="corretiva">Corretiva</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="equipment">Equipamento</Label>
+                      <Select value={newPlan.equipment_id} onValueChange={(value) => setNewPlan({...newPlan, equipment_id: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o equipamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipment.map((eq) => (
+                            <SelectItem key={eq.id} value={eq.id}>
+                              {eq.name} ({eq.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="frequency">Frequência</Label>
+                      <Select value={newPlan.frequency} onValueChange={(value) => setNewPlan({...newPlan, frequency: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a frequência" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="diaria">Diária</SelectItem>
+                          <SelectItem value="semanal">Semanal</SelectItem>
+                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="anual">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="tasks">Tarefas do Plano</Label>
+                      <Textarea 
+                        id="tasks" 
+                        placeholder="Descreva as tarefas que devem ser executadas..." 
+                        value={newPlan.tasks}
+                        onChange={(e) => setNewPlan({...newPlan, tasks: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleCreatePlan}>Criar Plano</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -540,3 +566,5 @@ const MaintenancePlans = () => {
 };
 
 export default MaintenancePlans;
+
+}
