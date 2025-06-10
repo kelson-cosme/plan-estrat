@@ -1,15 +1,16 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Calendar, Play, Settings } from "lucide-react";
 import { useMaintenancePlansData } from "@/hooks/useMaintenancePlansData";
+import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const MaintenanceScheduler = () => {
   const { initializeAllSchedules, generateScheduledOrders } = useMaintenancePlansData();
+  const { refetch: refetchWorkOrders } = useWorkOrders();
 
   // Fetch schedule data
   const { data: schedules = [], refetch: refetchSchedules } = useQuery({
@@ -48,6 +49,7 @@ const MaintenanceScheduler = () => {
     const success = await generateScheduledOrders();
     if (success) {
       refetchSchedules();
+      refetchWorkOrders(); // Atualiza as ordens de serviço também
     }
   };
 
@@ -147,10 +149,11 @@ const MaintenanceScheduler = () => {
                 {schedules.filter(s => {
                   const today = new Date();
                   const scheduleDate = new Date(s.next_scheduled_date);
-                  return scheduleDate.toDateString() === today.toDateString();
+                  const diffDays = Math.ceil((scheduleDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                  return diffDays >= 0 && diffDays <= 1; // Hoje e amanhã
                 }).length}
               </p>
-              <p className="text-sm text-gray-600">Hoje</p>
+              <p className="text-sm text-gray-600">Hoje/Amanhã</p>
             </div>
           </CardContent>
         </Card>
@@ -162,7 +165,7 @@ const MaintenanceScheduler = () => {
                   const today = new Date();
                   const scheduleDate = new Date(s.next_scheduled_date);
                   const diffDays = Math.ceil((scheduleDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-                  return diffDays > 0 && diffDays <= 7;
+                  return diffDays > 1 && diffDays <= 7;
                 }).length}
               </p>
               <p className="text-sm text-gray-600">Próximos 7 dias</p>
