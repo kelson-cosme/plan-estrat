@@ -14,10 +14,9 @@ export interface MaintenancePlan {
   active: boolean;
   description?: string;
   tasks?: string[] | null;
-  // NOVOS CAMPOS PARA PLANEJAMENTO AVANÇADO
-  end_date?: string | null; // Data de término do período de agendamento
-  schedule_days_of_week?: string[] | null; // Dias da semana para agendar (ex: ['monday', 'tuesday'])
-  // FIM NOVOS CAMPOS
+  end_date?: string | null;
+  schedule_days_of_week?: string[] | null;
+  required_resources?: string[] | null; // NOVO CAMPO
   created_at: string;
   updated_at: string;
   equipment?: {
@@ -37,10 +36,9 @@ type CreateMaintenancePlanData = {
   active?: boolean;
   description?: string;
   tasks?: string[] | null;
-  // NOVOS CAMPOS PARA PLANEJAMENTO AVANÇADO
   end_date?: string | null;
   schedule_days_of_week?: string[] | null;
-  // FIM NOVOS CAMPOS
+  required_resources?: string[] | null; // NOVO CAMPO
 };
 
 // Helper function to convert frequency string to days
@@ -99,37 +97,31 @@ export const useMaintenancePlansData = () => {
         ...item,
         priority: item.priority as MaintenancePlan['priority'],
         frequency: item.frequency_days ? daysToFrequency(item.frequency_days) : undefined,
-        // DESSERIALIZAR TASKS: Lógica mais robusta para converter string para array de strings
         tasks: (() => {
           if (item.tasks === null || typeof item.tasks === 'undefined') {
-            return null; // Se for null ou undefined, mantém null
+            return null;
           }
           if (Array.isArray(item.tasks)) {
-            return item.tasks; // Se já for um array, retorna-o
+            return item.tasks;
           }
-          // Se for uma string, tenta parsear como JSON
           if (typeof item.tasks === 'string') {
             try {
               const parsed = JSON.parse(item.tasks);
               if (Array.isArray(parsed)) {
-                return parsed; // Se o parse for bem-sucedido e for um array, retorna-o
+                return parsed;
               }
-              // Se o parse foi bem-sucedido mas não é um array (ex: '{"prop": "val"}'),
-              // ou se era uma string não-JSON, trata a string original como uma única tarefa.
-              return [item.tasks]; 
+              return [item.tasks];
             } catch (e) {
-              // Se o JSON.parse falhar (ex: string "ets" ou texto simples),
-              // trata a string original como uma única tarefa.
               return [item.tasks];
             }
           }
-          // Em último caso, para tipos inesperados, retorna null ou um array vazio
-          return null; 
+          return null;
         })(),
-        // DESSERIALIZAR NOVOS CAMPOS: Se forem armazenados como JSONB/TEXT e precisam de parse
-        end_date: item.end_date as string | null, // Assumindo que vem como string 'YYYY-MM-DD' ou null
-        schedule_days_of_week: item.schedule_days_of_week && typeof item.schedule_days_of_week === 'string' 
-          ? JSON.parse(item.schedule_days_of_week) : item.schedule_days_of_week, // Assumindo JSON string ou array
+        end_date: item.end_date as string | null,
+        schedule_days_of_week: item.schedule_days_of_week && typeof item.schedule_days_of_week === 'string'
+          ? JSON.parse(item.schedule_days_of_week) : item.schedule_days_of_week,
+        required_resources: item.required_resources && typeof item.required_resources === 'string' // NOVO: Desserializa recursos
+          ? JSON.parse(item.required_resources) : item.required_resources,
       }));
 
       setPlans(plansData);
@@ -147,10 +139,9 @@ export const useMaintenancePlansData = () => {
 
   const createPlan = async (planData: CreateMaintenancePlanData) => {
     try {
-      // SERIALIZAR TASKS: Converter array de strings para JSON string para o banco de dados
       const tasksToSave = planData.tasks ? JSON.stringify(planData.tasks) : null;
-      // SERIALIZAR DIAS DA SEMANA: Converter array para JSON string para o banco de dados
       const daysToSave = planData.schedule_days_of_week ? JSON.stringify(planData.schedule_days_of_week) : null;
+      const resourcesToSave = planData.required_resources ? JSON.stringify(planData.required_resources) : null; // NOVO: Serializa recursos
 
       const dbData = {
         name: planData.name,
@@ -162,8 +153,9 @@ export const useMaintenancePlansData = () => {
         active: planData.active,
         description: planData.description,
         tasks: tasksToSave,
-        end_date: planData.end_date, // Envia diretamente (assumindo YYYY-MM-DD ou null)
-        schedule_days_of_week: daysToSave, // Envia a string JSON
+        end_date: planData.end_date,
+        schedule_days_of_week: daysToSave,
+        required_resources: resourcesToSave, // NOVO: Envia recursos serializados
       };
 
       const { data, error } = await supabase
@@ -182,8 +174,6 @@ export const useMaintenancePlansData = () => {
         return null;
       }
 
-      // Initialize schedule for the new plan if it has a frequency
-      // A lógica de inicialização/geração no SQL precisará ser atualizada para considerar end_date e schedule_days_of_week
       if (dbData.frequency_days) {
         await initializeScheduleForPlan(data.id);
       }
@@ -193,7 +183,7 @@ export const useMaintenancePlansData = () => {
         description: "Plano de manutenção criado com sucesso",
       });
 
-      await fetchPlans(); // Refresh the list
+      await fetchPlans();
       return data;
     } catch (error) {
       console.error('Error:', error);
@@ -209,7 +199,7 @@ export const useMaintenancePlansData = () => {
   const initializeScheduleForPlan = async (planId: string) => {
     try {
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 1); // Start from tomorrow
+      startDate.setDate(startDate.getDate() + 1);
 
       const { error } = await supabase
         .from('maintenance_plan_schedules')
@@ -230,7 +220,7 @@ export const useMaintenancePlansData = () => {
     try {
       console.log('🔧 Chamando função initialize_maintenance_schedules...');
       const { error } = await supabase.rpc('initialize_maintenance_schedules');
-      
+
       if (error) {
         console.error('❌ Erro ao inicializar agendamentos:', error);
         toast({
@@ -246,7 +236,7 @@ export const useMaintenancePlansData = () => {
         title: "Agendamentos inicializados",
         description: "Agendamentos automáticos foram configurados para os planos ativos",
       });
-      
+
       return true;
     } catch (error) {
       console.error('❌ Erro inesperado:', error);
@@ -262,8 +252,7 @@ export const useMaintenancePlansData = () => {
   const generateScheduledOrders = async () => {
     try {
       console.log('🚀 Chamando função generate_scheduled_work_orders...');
-      
-      // Primeiro, vamos verificar se há agendamentos para gerar
+
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('maintenance_plan_schedules')
         .select(`
@@ -282,7 +271,7 @@ export const useMaintenancePlansData = () => {
       }
 
       console.log('📊 Agendamentos elegíveis para geração:', schedulesData?.length || 0);
-      
+
       if (!schedulesData || schedulesData.length === 0) {
         toast({
           title: "Nenhum agendamento devido",
@@ -292,7 +281,7 @@ export const useMaintenancePlansData = () => {
       }
 
       const { error } = await supabase.rpc('generate_scheduled_work_orders');
-      
+
       if (error) {
         console.error('❌ Erro ao gerar ordens agendadas:', error);
         toast({
@@ -308,7 +297,7 @@ export const useMaintenancePlansData = () => {
         title: "Ordens geradas",
         description: `${schedulesData.length} nova(s) ordem(ns) de serviço foram geradas automaticamente`,
       });
-      
+
       return true;
     } catch (error) {
       console.error('❌ Erro inesperado:', error);
@@ -323,22 +312,22 @@ export const useMaintenancePlansData = () => {
 
   const updatePlan = async (id: string, planData: Partial<MaintenancePlan>) => {
     try {
-      // Convert frequency string to days if frequency is being updated
       const dbData: any = { ...planData };
       if (planData.frequency) {
         delete dbData.frequency;
         dbData.frequency_days = frequencyToDays(planData.frequency);
       }
 
-      // SERIALIZAR TASKS: Converter array de strings para JSON string para o banco de dados
       if (planData.tasks !== undefined) {
         dbData.tasks = planData.tasks ? JSON.stringify(planData.tasks) : null;
       }
-      // SERIALIZAR DIAS DA SEMANA: Converter array para JSON string para o banco de dados
       if (planData.schedule_days_of_week !== undefined) {
         dbData.schedule_days_of_week = planData.schedule_days_of_week ? JSON.stringify(planData.schedule_days_of_week) : null;
       }
-      
+      if (planData.required_resources !== undefined) { // NOVO: Serializa recursos
+        dbData.required_resources = planData.required_resources ? JSON.stringify(planData.required_resources) : null;
+      }
+
       const { data, error } = await supabase
         .from('maintenance_plans')
         .update(dbData)
@@ -361,7 +350,7 @@ export const useMaintenancePlansData = () => {
         description: "Plano de manutenção atualizado com sucesso",
       });
 
-      await fetchPlans(); // Refresh the list
+      await fetchPlans();
       return data;
     } catch (error) {
       console.error('Error:', error);
@@ -396,7 +385,7 @@ export const useMaintenancePlansData = () => {
         description: "Plano de manutenção deletado com sucesso",
       });
 
-      await fetchPlans(); // Refresh the list
+      await fetchPlans();
       return true;
     } catch (error) {
       console.error('Error:', error);

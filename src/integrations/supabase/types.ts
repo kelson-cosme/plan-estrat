@@ -107,6 +107,7 @@ export type Database = {
           // NOVOS CAMPOS ADICIONADOS AQUI
           end_date: string | null // Adicionado: para a data de término do agendamento
           schedule_days_of_week: string | null // Adicionado: para os dias da semana (ex: '["monday", "friday"]') - armazenado como JSON string ou array de texto
+          required_resources: string | null; // NOVO: Recursos necessários para o plano (JSON string)
           // FIM DOS NOVOS CAMPOS
         }
         Insert: {
@@ -125,6 +126,7 @@ export type Database = {
           // NOVOS CAMPOS ADICIONADOS AQUI
           end_date?: string | null
           schedule_days_of_week?: string | null
+          required_resources?: string | null; // NOVO
           // FIM DOS NOVOS CAMPOS
         }
         Update: {
@@ -143,6 +145,7 @@ export type Database = {
           // NOVOS CAMPOS ADICIONADOS AQUI
           end_date?: string | null
           schedule_days_of_week?: string | null
+          required_resources?: string | null; // NOVO
           // FIM DOS NOVOS CAMPOS
         }
         Relationships: [
@@ -202,6 +205,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          used_resources: string | null; // NOVO: Recursos utilizados (JSON string)
         }
         Insert: {
           actual_hours?: number | null
@@ -219,6 +223,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          used_resources?: string | null; // NOVO
         }
         Update: {
           actual_hours?: number | null
@@ -236,6 +241,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          used_resources?: string | null; // NOVO
         }
         Relationships: [
           {

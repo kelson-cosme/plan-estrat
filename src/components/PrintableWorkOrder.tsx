@@ -2,26 +2,21 @@ import React from 'react';
 import { formatDateForDisplay } from '@/lib/utils';
 import { useWorkOrders } from '@/hooks/useWorkOrders';
 
-// Definimos a interface para as props, esperando uma ordem de serviço
 interface PrintableWorkOrderProps {
   order: ReturnType<typeof useWorkOrders>['workOrders'][0] | null;
 }
 
-// Usamos forwardRef para compatibilidade e boas práticas
 export const PrintableWorkOrder = React.forwardRef<HTMLDivElement, PrintableWorkOrderProps>(({ order }, ref) => {
-  // Se não houver ordem para imprimir, não renderiza nada
   if (!order) {
     return null;
   }
 
-  // Mapeamento de valores para exibição amigável
   const typeMap: { [key: string]: string } = { 'preventiva': 'Preventiva', 'preditiva': 'Preditiva', 'corretiva': 'Corretiva' };
   const priorityMap: { [key: string]: string } = { 'low': 'Baixa', 'medium': 'Média', 'high': 'Alta', 'critical': 'Crítica' };
   const statusMap: { [key: string]: string } = { 'open': 'Aberta', 'in_progress': 'Em Andamento', 'completed': 'Concluída', 'cancelled': 'Cancelada' };
 
   return (
     <div ref={ref} className="p-8 font-sans text-black bg-white">
-      {/* Cabeçalho */}
       <header className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold">Ordem de Serviço</h1>
@@ -34,7 +29,6 @@ export const PrintableWorkOrder = React.forwardRef<HTMLDivElement, PrintableWork
       </header>
 
       <main>
-        {/* Detalhes da Ordem */}
         <section className="mb-6">
           <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">Detalhes da Ordem</h2>
           <div className="grid grid-cols-3 gap-x-8 gap-y-4 text-sm">
@@ -57,7 +51,6 @@ export const PrintableWorkOrder = React.forwardRef<HTMLDivElement, PrintableWork
           </div>
         </section>
 
-        {/* Informações do Equipamento */}
         <section className="mb-6">
           <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">Equipamento</h2>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -72,7 +65,19 @@ export const PrintableWorkOrder = React.forwardRef<HTMLDivElement, PrintableWork
           </div>
         </section>
 
-        {/* Descrição e Tarefas */}
+        {/* NOVO: Seção para Recursos Utilizados */}
+        {order.used_resources && order.used_resources.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">Recursos Utilizados</h2>
+            <ul className="list-disc list-inside text-sm">
+              {order.used_resources.map((resource, index) => (
+                <li key={index}>{resource}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {/* FIM NOVO: Seção para Recursos Utilizados */}
+
         <section className="mb-8">
           <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">Descrição e Tarefas</h2>
           <div className="text-sm whitespace-pre-wrap p-4 bg-gray-50 rounded-md border">
@@ -80,7 +85,6 @@ export const PrintableWorkOrder = React.forwardRef<HTMLDivElement, PrintableWork
           </div>
         </section>
 
-        {/* Assinaturas */}
         <section>
           <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">Aprovações</h2>
           <div className="grid grid-cols-2 gap-8 pt-20 text-center text-sm">

@@ -158,27 +158,28 @@ const MaintenancePlans = () => {
     setIsScheduleDialogOpen(true);
   };
 
-  const handleExecutePlan = async (plan: MaintenancePlanType) => {
-    const workOrderData = {
-      title: `Execução: ${plan.name}`,
-      type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
-      description: plan.description || (plan.tasks ? plan.tasks.join('\n') : null) || `Execução do plano de manutenção: ${plan.name}`,
-      priority: plan.priority,
-      status: 'in_progress' as const,
-      equipment_id: plan.equipment_id,
-      maintenance_plan_id: plan.id,
-      scheduled_date: new Date().toISOString().split('T')[0],
-      estimated_hours: plan.estimated_duration_hours
-    };
+  //função de ao clicar o botão executar, ele agende automático
+  // const handleExecutePlan = async (plan: MaintenancePlanType) => {
+  //   const workOrderData = {
+  //     title: `Execução: ${plan.name}`,
+  //     type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
+  //     description: plan.description || (plan.tasks ? plan.tasks.join('\n') : null) || `Execução do plano de manutenção: ${plan.name}`,
+  //     priority: plan.priority,
+  //     status: 'in_progress' as const,
+  //     equipment_id: plan.equipment_id,
+  //     maintenance_plan_id: plan.id,
+  //     scheduled_date: new Date().toISOString().split('T')[0],
+  //     estimated_hours: plan.estimated_duration_hours
+  //   };
 
-    const result = await createWorkOrder(workOrderData);
-    if (result) {
-      toast({
-        title: "Ordem de serviço criada",
-        description: `Ordem de execução criada para o plano "${plan.name}"`,
-      });
-    }
-  };
+  //   const result = await createWorkOrder(workOrderData);
+  //   if (result) {
+  //     toast({
+  //       title: "Ordem de serviço criada",
+  //       description: `Ordem de execução criada para o plano "${plan.name}"`,
+  //     });
+  //   }
+  // };
 
   const handleCreateScheduledOrder = async () => {
     if (!selectedPlanForSchedule || !scheduledDate) {
@@ -647,7 +648,9 @@ const MaintenancePlans = () => {
                         <Calendar className="w-4 h-4 mr-1" />
                         Agendar
                       </Button>
-                      <Button 
+
+                      {/* Botão do executar */}
+                      {/* <Button 
                         variant="outline" 
                         size="sm" 
                         className="flex-1"
@@ -655,7 +658,7 @@ const MaintenancePlans = () => {
                       >
                         <Wrench className="w-4 h-4 mr-1" />
                         Executar
-                      </Button>
+                      </Button> */}
                     </div>
                   </CardContent>
                 </Card>

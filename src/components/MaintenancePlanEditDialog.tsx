@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MaintenancePlan } from "@/hooks/useMaintenancePlansData";
 import { useEquipment } from "@/hooks/useEquipment";
 import { toast } from "@/hooks/use-toast";
-import { Plus, XCircle } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // Importar ToggleGroup
+import { Plus, XCircle, Package } from "lucide-react"; // Importar Package
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface MaintenancePlanEditDialogProps {
   plan: MaintenancePlan | null;
@@ -30,10 +30,12 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
     description: "",
     active: true,
     estimated_duration_hours: "",
-    end_date: "" as string | null, // NOVO CAMPO
-    schedule_days_of_week: [] as string[], // NOVO CAMPO
+    end_date: "" as string | null,
+    schedule_days_of_week: [] as string[],
+    required_resources: [] as string[], // NOVO CAMPO
   });
   const [newTaskInput, setNewTaskInput] = useState("");
+  const [newResourceInput, setNewResourceInput] = useState(""); // NOVO: Estado para input de recurso
 
   const { equipment, loading: loadingEquipment } = useEquipment();
 
@@ -67,6 +69,26 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
         }
       }
 
+      // NOVO: Desserializar resources de forma segura
+      let resourcesArray: string[] = [];
+      if (plan.required_resources) {
+        if (Array.isArray(plan.required_resources)) {
+          resourcesArray = plan.required_resources;
+        } else if (typeof plan.required_resources === 'string') {
+          try {
+            const parsedResources = JSON.parse(plan.required_resources);
+            if (Array.isArray(parsedResources)) {
+              resourcesArray = parsedResources;
+            } else {
+              resourcesArray = [plan.required_resources];
+            }
+          } catch (e) {
+            resourcesArray = [plan.required_resources];
+          }
+        }
+      }
+
+
       setFormData({
         name: plan.name || "",
         type: plan.type || "",
@@ -77,8 +99,9 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
         description: plan.description || "",
         active: plan.active,
         estimated_duration_hours: plan.estimated_duration_hours?.toString() || "",
-        end_date: plan.end_date || null, // Carrega o valor existente
-        schedule_days_of_week: Array.isArray(plan.schedule_days_of_week) ? plan.schedule_days_of_week : [], // Carrega o valor existente
+        end_date: plan.end_date || null,
+        schedule_days_of_week: Array.isArray(plan.schedule_days_of_week) ? plan.schedule_days_of_week : [],
+        required_resources: resourcesArray, // NOVO: Carregar recursos
       });
     }
   }, [plan]);
@@ -100,6 +123,24 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
     }));
   };
 
+  // NOVO: Funções para gerenciar recursos
+  const handleAddResource = () => {
+    if (newResourceInput.trim() !== "") {
+      setFormData(prev => ({
+        ...prev,
+        required_resources: [...prev.required_resources, newResourceInput.trim()]
+      }));
+      setNewResourceInput("");
+    }
+  };
+
+  const handleRemoveResource = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      required_resources: prev.required_resources.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
   const handleSave = async () => {
     if (!plan) return;
 
@@ -113,8 +154,9 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
       description: formData.description || undefined,
       active: formData.active,
       estimated_duration_hours: formData.estimated_duration_hours ? parseInt(formData.estimated_duration_hours) : undefined,
-      end_date: formData.end_date || null, // Salva o novo campo
-      schedule_days_of_week: formData.schedule_days_of_week.length > 0 ? formData.schedule_days_of_week : null, // Salva o novo campo
+      end_date: formData.end_date || null,
+      schedule_days_of_week: formData.schedule_days_of_week.length > 0 ? formData.schedule_days_of_week : null,
+      required_resources: formData.required_resources.length > 0 ? formData.required_resources : null, // NOVO: Salva recursos
     };
 
     const result = await onUpdate(plan.id, updateData);
@@ -137,9 +179,9 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="edit-plan-name">Nome do Plano</Label>
-            <Input 
-              id="edit-plan-name" 
-              placeholder="Ex: Lubrificação Mensal" 
+            <Input
+              id="edit-plan-name"
+              placeholder="Ex: Lubrificação Mensal"
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
             />
@@ -194,7 +236,6 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
               </SelectContent>
             </Select>
           </div>
-          {/* NOVO CAMPO: Data de Término */}
           <div className="space-y-2">
             <Label htmlFor="edit-end-date">Data de Término (Opcional)</Label>
             <Input
@@ -204,7 +245,6 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
               onChange={(e) => setFormData({...formData, end_date: e.target.value})}
             />
           </div>
-          {/* NOVO CAMPO: Dias da Semana */}
           <div className="col-span-2 space-y-2">
             <Label htmlFor="edit-schedule-days-of-week">Dias da Semana (Para agendamentos diários)</Label>
             <ToggleGroup
@@ -258,11 +298,49 @@ const MaintenancePlanEditDialog = ({ plan, isOpen, onClose, onUpdate }: Maintena
               <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada.</p>
             )}
           </div>
+          {/* NOVO: Seção para Recursos Necessários */}
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="edit-resources">Recursos Necessários</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="edit-new-resource-input"
+                placeholder="Adicionar recurso (Ex: Óleo 5L, Filtro de ar)"
+                value={newResourceInput}
+                onChange={(e) => setNewResourceInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddResource();
+                  }
+                }}
+              />
+              <Button type="button" onClick={handleAddResource}>Adicionar</Button>
+            </div>
+            <div className="space-y-1">
+              {formData.required_resources.map((resource, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                  <span className="text-sm">{resource}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveResource(index)}
+                  >
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {formData.required_resources.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum recurso adicionado.</p>
+            )}
+          </div>
+          {/* FIM NOVO: Seção para Recursos Necessários */}
           <div className="col-span-2 space-y-2">
             <Label htmlFor="edit-description">Descrição do Plano</Label>
-            <Textarea 
-              id="edit-description" 
-              placeholder="Descreva o plano de manutenção..." 
+            <Textarea
+              id="edit-description"
+              placeholder="Descreva o plano de manutenção..."
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
             />
