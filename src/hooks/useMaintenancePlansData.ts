@@ -71,10 +71,25 @@ export const useMaintenancePlansData = () => {
 
   const fetchPlans = async () => {
     try {
+      // ALTERAÇÃO FINAL: Trocamos o select('*') pelas colunas explícitas.
       const { data, error } = await supabase
         .from('maintenance_plans')
         .select(`
-          *,
+          id,
+          name,
+          type,
+          equipment_id,
+          frequency_days,
+          estimated_duration_hours,
+          priority,
+          active,
+          description,
+          tasks,
+          end_date,
+          schedule_days_of_week,
+          required_resources,
+          created_at,
+          updated_at,
           equipment:equipment_id (
             id,
             name,
@@ -120,7 +135,7 @@ export const useMaintenancePlansData = () => {
         end_date: item.end_date as string | null,
         schedule_days_of_week: item.schedule_days_of_week && typeof item.schedule_days_of_week === 'string'
           ? JSON.parse(item.schedule_days_of_week) : item.schedule_days_of_week,
-        required_resources: item.required_resources && typeof item.required_resources === 'string' // NOVO: Desserializa recursos
+        required_resources: item.required_resources && typeof item.required_resources === 'string'
           ? JSON.parse(item.required_resources) : item.required_resources,
       }));
 

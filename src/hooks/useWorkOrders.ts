@@ -56,10 +56,13 @@ export const useWorkOrders = () => {
 
   const fetchWorkOrders = async () => {
     try {
+      // ALTERAÇÃO: Removemos o '*' e especificamos as colunas de work_orders
       const { data, error } = await supabase
         .from('work_orders')
         .select(`
-          *,
+          id, title, description, type, priority, status, equipment_id, assigned_to,
+          maintenance_plan_id, scheduled_date, completed_date, estimated_hours,
+          actual_hours, created_at, updated_at, used_resources,
           equipment:equipment_id (
             id,
             name,

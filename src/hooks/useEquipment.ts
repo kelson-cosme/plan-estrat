@@ -1,17 +1,17 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+// A interface permanece a mesma
 export interface Equipment {
   id: string;
   name: string;
   code: string;
   type: string;
-  location?: string;
-  manufacturer?: string;
-  model?: string;
-  installation_date?: string;
+  location?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  installation_date?: string | null;
   status: 'active' | 'inactive' | 'maintenance' | 'retired';
   criticality: 'low' | 'medium' | 'high' | 'critical';
   created_at: string;
@@ -24,9 +24,13 @@ export const useEquipment = () => {
 
   const fetchEquipment = async () => {
     try {
+      // ***** A CORREÇÃO CRÍTICA ESTÁ AQUI *****
+      // Trocamos o select('*') por uma lista explícita de todas as colunas da tabela 'equipment'.
       const { data, error } = await supabase
         .from('equipment')
-        .select('*')
+        .select(
+          'id, name, code, type, location, manufacturer, model, installation_date, status, criticality, created_at, updated_at'
+        )
         .order('name');
 
       if (error) {
@@ -39,7 +43,7 @@ export const useEquipment = () => {
         return;
       }
 
-      // Convert database types to interface types
+      // O resto da função permanece igual, mas agora mais segura
       const equipmentData: Equipment[] = (data || []).map(item => ({
         ...item,
         status: item.status as Equipment['status'],
