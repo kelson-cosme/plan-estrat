@@ -1,4 +1,3 @@
-// src/components/MaintenancePlans.tsx
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,9 +26,7 @@ const MaintenancePlans = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [selectedPlanForSchedule, setSelectedPlanForSchedule] = useState<MaintenancePlanType | null>(null);
-  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<MaintenancePlanType | null>(
-    null
-  );
+  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<MaintenancePlanType | null>(null);
   const [scheduledDate, setScheduledDate] = useState("");
   const [newPlan, setNewPlan] = useState({
     name: "",
@@ -764,9 +761,15 @@ const MaintenancePlans = () => {
                         {plan.active ? "Ativo" : "Inativo"}
                       </Badge>
                       </td>
-                      <td className="text-center py-3 px-4">
-                      <Button variant="ghost" size="sm" onClick={() => handleEditPlan(plan)}>
+                      <td className="text-center py-3 px-4 flex items-center justify-center space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleToggleActive(plan)}>
+                          {plan.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleEditPlan(plan)}>
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeletePlan(plan.id)}>
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </td>
                     </tr>

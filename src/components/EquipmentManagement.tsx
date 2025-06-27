@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useViewMode } from "@/contexts/ViewModeContext"; // Importe o hook
+import { useViewMode } from "@/contexts/ViewModeContext";
 
 interface EquipmentFormData {
   name: string;
@@ -31,7 +31,7 @@ interface EquipmentFormData {
 const EquipmentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const { viewMode, setViewMode } = useViewMode(); // Use o contexto
+  const { viewMode, setViewMode } = useViewMode();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -479,10 +479,25 @@ const EquipmentManagement = () => {
                          eq.status === 'inactive' ? 'Inativo' : 'Aposentado'}
                       </Badge>
                     </td>
-                    <td className="text-center py-3 px-4">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(eq)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                    <td className="text-center py-3 px-4 flex items-center justify-center space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(eq)}><Edit className="w-4 h-4" /></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm"><Trash2 className="w-4 h-4" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o equipamento "{eq.name}"? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(eq.id)}>Excluir</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </td>
                   </tr>
                 ))}
