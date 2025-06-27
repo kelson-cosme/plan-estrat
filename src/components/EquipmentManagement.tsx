@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Settings, Wrench, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Settings, Wrench, Edit, Trash2, List, LayoutGrid } from "lucide-react";
 import { useEquipment } from "@/hooks/useEquipment";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useViewMode } from "@/contexts/ViewModeContext"; // Importe o hook
 
 interface EquipmentFormData {
   name: string;
@@ -30,6 +31,7 @@ interface EquipmentFormData {
 const EquipmentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
+  const { viewMode, setViewMode } = useViewMode(); // Use o contexto
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -57,7 +59,7 @@ const EquipmentManagement = () => {
     }
   };
 
-  const filteredEquipment = equipment.filter(eq => 
+  const filteredEquipment = equipment.filter(eq =>
     eq.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedLocation === "all" || eq.location === selectedLocation)
   );
@@ -213,6 +215,15 @@ const EquipmentManagement = () => {
               <CardTitle>Gestão de Equipamentos</CardTitle>
               <CardDescription>Controle e monitoramento de ativos industriais</CardDescription>
             </div>
+            <div className="flex items-center space-x-2">
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => { if (value) setViewMode(value as any) }} aria-label="Visualização">
+                <ToggleGroupItem value="card" aria-label="Visualização em Card">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="Visualização em Lista">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -231,17 +242,17 @@ const EquipmentManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nome do Equipamento*</Label>
-                      <Input 
-                        id="name" 
-                        placeholder="Ex: Compressor de Ar 001" 
+                      <Input
+                        id="name"
+                        placeholder="Ex: Compressor de Ar 001"
                         {...register("name", { required: true })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="code">Código*</Label>
-                      <Input 
-                        id="code" 
-                        placeholder="Ex: EQ-001" 
+                      <Input
+                        id="code"
+                        placeholder="Ex: EQ-001"
                         {...register("code", { required: true })}
                       />
                     </div>
@@ -263,25 +274,25 @@ const EquipmentManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location">Localização</Label>
-                      <Input 
-                        id="location" 
-                        placeholder="Ex: Setor A" 
+                      <Input
+                        id="location"
+                        placeholder="Ex: Setor A"
                         {...register("location")}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="manufacturer">Fabricante</Label>
-                      <Input 
-                        id="manufacturer" 
-                        placeholder="Ex: Siemens" 
+                      <Input
+                        id="manufacturer"
+                        placeholder="Ex: Siemens"
                         {...register("manufacturer")}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="model">Modelo</Label>
-                      <Input 
-                        id="model" 
-                        placeholder="Ex: XYZ-123" 
+                      <Input
+                        id="model"
+                        placeholder="Ex: XYZ-123"
                         {...register("model")}
                       />
                     </div>
@@ -301,9 +312,9 @@ const EquipmentManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="installation_date">Data de Instalação</Label>
-                      <Input 
-                        id="installation_date" 
-                        type="date" 
+                      <Input
+                        id="installation_date"
+                        type="date"
                         {...register("installation_date")}
                       />
                     </div>
@@ -317,6 +328,7 @@ const EquipmentManagement = () => {
                 </form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -346,98 +358,139 @@ const EquipmentManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Equipment Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredEquipment.map((eq) => (
-          <Card key={eq.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{eq.name}</CardTitle>
-                  <CardDescription>{eq.code} • {eq.type}</CardDescription>
+      {/* Equipment Grid / List */}
+      {viewMode === 'card' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredEquipment.map((eq) => (
+            <Card key={eq.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{eq.name}</CardTitle>
+                    <CardDescription>{eq.code} • {eq.type}</CardDescription>
+                  </div>
+                  <div className="flex space-x-1">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(eq)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o equipamento "{eq.name}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(eq.id)}>
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-                <div className="flex space-x-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(eq)}>
-                    <Edit className="w-4 h-4" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Status:</span>
+                  <Badge className={getStatusColor(eq.status)}>
+                    {eq.status === 'active' ? 'Ativo' :
+                     eq.status === 'maintenance' ? 'Manutenção' :
+                     eq.status === 'inactive' ? 'Inativo' : 'Aposentado'}
+                  </Badge>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Criticidade:</span>
+                  <Badge className={getCriticalityColor(eq.criticality)}>
+                    {eq.criticality === 'critical' ? 'Crítica' :
+                     eq.criticality === 'high' ? 'Alta' :
+                     eq.criticality === 'medium' ? 'Média' : 'Baixa'}
+                  </Badge>
+                </div>
+
+                {eq.location && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Localização:</span>
+                    <span className="text-sm font-medium">{eq.location}</span>
+                  </div>
+                )}
+
+                {eq.manufacturer && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fabricante:</span>
+                    <span className="text-sm font-medium">{eq.manufacturer}</span>
+                  </div>
+                )}
+
+                {eq.model && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Modelo:</span>
+                    <span className="text-sm font-medium">{eq.model}</span>
+                  </div>
+                )}
+
+                <div className="flex space-x-2 pt-3">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleMaintenance(eq)}>
+                    <Wrench className="w-4 h-4 mr-1" />
+                    Manutenção
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDetails(eq)}>
+                    <Settings className="w-4 h-4 mr-1" />
+                    Detalhes
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4">Nome</th>
+                  <th className="text-left py-3 px-4">Código</th>
+                  <th className="text-left py-3 px-4">Tipo</th>
+                  <th className="text-left py-3 px-4">Localização</th>
+                  <th className="text-center py-3 px-4">Status</th>
+                  <th className="text-center py-3 px-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEquipment.map((eq) => (
+                  <tr key={eq.id} className="border-b">
+                    <td className="py-3 px-4">{eq.name}</td>
+                    <td className="py-3 px-4">{eq.code}</td>
+                    <td className="py-3 px-4">{eq.type}</td>
+                    <td className="py-3 px-4">{eq.location}</td>
+                    <td className="text-center py-3 px-4">
+                      <Badge className={getStatusColor(eq.status)}>
+                        {eq.status === 'active' ? 'Ativo' :
+                         eq.status === 'maintenance' ? 'Manutenção' :
+                         eq.status === 'inactive' ? 'Inativo' : 'Aposentado'}
+                      </Badge>
+                    </td>
+                    <td className="text-center py-3 px-4">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(eq)}>
+                        <Edit className="w-4 h-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tem certeza que deseja excluir o equipamento "{eq.name}"? Esta ação não pode ser desfeita.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(eq.id)}>
-                          Excluir
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Status:</span>
-                <Badge className={getStatusColor(eq.status)}>
-                  {eq.status === 'active' ? 'Ativo' : 
-                   eq.status === 'maintenance' ? 'Manutenção' : 
-                   eq.status === 'inactive' ? 'Inativo' : 'Aposentado'}
-                </Badge>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Criticidade:</span>
-                <Badge className={getCriticalityColor(eq.criticality)}>
-                  {eq.criticality === 'critical' ? 'Crítica' :
-                   eq.criticality === 'high' ? 'Alta' :
-                   eq.criticality === 'medium' ? 'Média' : 'Baixa'}
-                </Badge>
-              </div>
-
-              {eq.location && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Localização:</span>
-                  <span className="text-sm font-medium">{eq.location}</span>
-                </div>
-              )}
-
-              {eq.manufacturer && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Fabricante:</span>
-                  <span className="text-sm font-medium">{eq.manufacturer}</span>
-                </div>
-              )}
-
-              {eq.model && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Modelo:</span>
-                  <span className="text-sm font-medium">{eq.model}</span>
-                </div>
-              )}
-
-              <div className="flex space-x-2 pt-3">
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleMaintenance(eq)}>
-                  <Wrench className="w-4 h-4 mr-1" />
-                  Manutenção
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDetails(eq)}>
-                  <Settings className="w-4 h-4 mr-1" />
-                  Detalhes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Equipment Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -452,17 +505,17 @@ const EquipmentManagement = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Nome do Equipamento*</Label>
-                <Input 
-                  id="edit-name" 
-                  placeholder="Ex: Compressor de Ar 001" 
+                <Input
+                  id="edit-name"
+                  placeholder="Ex: Compressor de Ar 001"
                   {...register("name", { required: true })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-code">Código*</Label>
-                <Input 
-                  id="edit-code" 
-                  placeholder="Ex: EQ-001" 
+                <Input
+                  id="edit-code"
+                  placeholder="Ex: EQ-001"
                   {...register("code", { required: true })}
                 />
               </div>
@@ -498,25 +551,25 @@ const EquipmentManagement = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-location">Localização</Label>
-                <Input 
-                  id="edit-location" 
-                  placeholder="Ex: Setor A" 
+                <Input
+                  id="edit-location"
+                  placeholder="Ex: Setor A"
                   {...register("location")}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-manufacturer">Fabricante</Label>
-                <Input 
-                  id="edit-manufacturer" 
-                  placeholder="Ex: Siemens" 
+                <Input
+                  id="edit-manufacturer"
+                  placeholder="Ex: Siemens"
                   {...register("manufacturer")}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-model">Modelo</Label>
-                <Input 
-                  id="edit-model" 
-                  placeholder="Ex: XYZ-123" 
+                <Input
+                  id="edit-model"
+                  placeholder="Ex: XYZ-123"
                   {...register("model")}
                 />
               </div>
@@ -536,9 +589,9 @@ const EquipmentManagement = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-installation_date">Data de Instalação</Label>
-                <Input 
-                  id="edit-installation_date" 
-                  type="date" 
+                <Input
+                  id="edit-installation_date"
+                  type="date"
                   {...register("installation_date")}
                 />
               </div>
@@ -580,8 +633,8 @@ const EquipmentManagement = () => {
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Status</Label>
                   <Badge className={getStatusColor(selectedEquipment.status)}>
-                    {selectedEquipment.status === 'active' ? 'Ativo' : 
-                     selectedEquipment.status === 'maintenance' ? 'Manutenção' : 
+                    {selectedEquipment.status === 'active' ? 'Ativo' :
+                     selectedEquipment.status === 'maintenance' ? 'Manutenção' :
                      selectedEquipment.status === 'inactive' ? 'Inativo' : 'Aposentado'}
                   </Badge>
                 </div>

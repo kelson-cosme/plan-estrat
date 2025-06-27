@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause, Settings, XCircle } from "lucide-react";
+import { Plus, Calendar, Clock, Wrench, AlertTriangle, CheckCircle, Edit, Trash2, Play, Pause, Settings, XCircle, List, LayoutGrid } from "lucide-react";
 import { useMaintenancePlansData, MaintenancePlan as MaintenancePlanType } from "@/hooks/useMaintenancePlansData";
 import { useWorkOrders } from "@/hooks/useWorkOrders";
 import { useQuery } from "@tanstack/react-query";
@@ -17,15 +17,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import MaintenanceScheduler from "./MaintenanceScheduler";
 import MaintenancePlanEditDialog from "./MaintenancePlanEditDialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // Importar ToggleGroup
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useViewMode } from "@/contexts/ViewModeContext";
 
 const MaintenancePlans = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const { viewMode, setViewMode } = useViewMode();
   const [showScheduler, setShowScheduler] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [selectedPlanForSchedule, setSelectedPlanForSchedule] = useState<MaintenancePlanType | null>(null);
-  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<MaintenancePlanType | null>(null);
+  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<MaintenancePlanType | null>(
+    null
+  );
   const [scheduledDate, setScheduledDate] = useState("");
   const [newPlan, setNewPlan] = useState({
     name: "",
@@ -35,10 +39,12 @@ const MaintenancePlans = () => {
     tasks: [] as string[],
     priority: "medium",
     description: "",
-    end_date: "" as string | null, // NOVO CAMPO
-    schedule_days_of_week: [] as string[], // NOVO CAMPO
+    end_date: "" as string | null,
+    schedule_days_of_week: [] as string[],
+    required_resources: [] as string[],
   });
   const [newTaskInput, setNewTaskInput] = useState("");
+  const [newResourceInput, setNewResourceInput] = useState("");
 
   const { plans, loading, createPlan, updatePlan, deletePlan } = useMaintenancePlansData();
   const { createWorkOrder } = useWorkOrders();
@@ -53,7 +59,6 @@ const MaintenancePlans = () => {
     { value: 'saturday', label: 'Sáb' },
   ];
 
-  // Fetch equipment data for the select dropdown
   const { data: equipment = [] } = useQuery({
     queryKey: ['equipment'],
     queryFn: async () => {
@@ -83,6 +88,23 @@ const MaintenancePlans = () => {
     }));
   };
 
+  const handleAddResource = () => {
+    if (newResourceInput.trim() !== "") {
+      setNewPlan(prev => ({
+        ...prev,
+        required_resources: [...prev.required_resources, newResourceInput.trim()]
+      }));
+      setNewResourceInput("");
+    }
+  };
+
+  const handleRemoveResource = (indexToRemove: number) => {
+    setNewPlan(prev => ({
+      ...prev,
+      required_resources: prev.required_resources.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
   const handleCreatePlan = async () => {
     if (!newPlan.name || !newPlan.type) {
       toast({
@@ -93,7 +115,6 @@ const MaintenancePlans = () => {
       return;
     }
 
-    // Validação básica para agendamento diário sem fins de semana com período
     if (newPlan.frequency === 'diaria' && newPlan.end_date && newPlan.schedule_days_of_week.length === 0) {
       toast({
         title: "Atenção",
@@ -103,7 +124,6 @@ const MaintenancePlans = () => {
       return;
     }
 
-
     const planData = {
       name: newPlan.name,
       type: newPlan.type,
@@ -112,8 +132,9 @@ const MaintenancePlans = () => {
       tasks: newPlan.tasks.length > 0 ? newPlan.tasks : null,
       priority: newPlan.priority as 'low' | 'medium' | 'high' | 'critical',
       description: newPlan.description || undefined,
-      end_date: newPlan.end_date || null, // NOVO CAMPO
-      schedule_days_of_week: newPlan.schedule_days_of_week.length > 0 ? newPlan.schedule_days_of_week : null, // NOVO CAMPO
+      end_date: newPlan.end_date || null,
+      schedule_days_of_week: newPlan.schedule_days_of_week.length > 0 ? newPlan.schedule_days_of_week : null,
+      required_resources: newPlan.required_resources.length > 0 ? newPlan.required_resources : null,
       active: true
     };
 
@@ -130,8 +151,10 @@ const MaintenancePlans = () => {
         description: "",
         end_date: null,
         schedule_days_of_week: [],
+        required_resources: [],
       });
       setNewTaskInput("");
+      setNewResourceInput("");
     }
   };
 
@@ -158,28 +181,28 @@ const MaintenancePlans = () => {
     setIsScheduleDialogOpen(true);
   };
 
-  //função de ao clicar o botão executar, ele agende automático
-  // const handleExecutePlan = async (plan: MaintenancePlanType) => {
-  //   const workOrderData = {
-  //     title: `Execução: ${plan.name}`,
-  //     type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
-  //     description: plan.description || (plan.tasks ? plan.tasks.join('\n') : null) || `Execução do plano de manutenção: ${plan.name}`,
-  //     priority: plan.priority,
-  //     status: 'in_progress' as const,
-  //     equipment_id: plan.equipment_id,
-  //     maintenance_plan_id: plan.id,
-  //     scheduled_date: new Date().toISOString().split('T')[0],
-  //     estimated_hours: plan.estimated_duration_hours
-  //   };
+  const handleExecutePlan = async (plan: MaintenancePlanType) => {
+    const workOrderData = {
+      title: `Execução: ${plan.name}`,
+      type: plan.type as 'preventiva' | 'preditiva' | 'corretiva',
+      description: plan.description || (plan.tasks ? plan.tasks.join('\n') : null) || `Execução do plano de manutenção: ${plan.name}`,
+      priority: plan.priority,
+      status: 'in_progress' as const,
+      equipment_id: plan.equipment_id,
+      maintenance_plan_id: plan.id,
+      scheduled_date: new Date().toISOString().split('T')[0],
+      estimated_hours: plan.estimated_duration_hours,
+      used_resources: plan.required_resources,
+    };
 
-  //   const result = await createWorkOrder(workOrderData);
-  //   if (result) {
-  //     toast({
-  //       title: "Ordem de serviço criada",
-  //       description: `Ordem de execução criada para o plano "${plan.name}"`,
-  //     });
-  //   }
-  // };
+    const result = await createWorkOrder(workOrderData);
+    if (result) {
+      toast({
+        title: "Ordem de serviço criada",
+        description: `Ordem de execução criada para o plano "${plan.name}"`,
+      });
+    }
+  };
 
   const handleCreateScheduledOrder = async () => {
     if (!selectedPlanForSchedule || !scheduledDate) {
@@ -200,7 +223,8 @@ const MaintenancePlans = () => {
       equipment_id: selectedPlanForSchedule.equipment_id,
       maintenance_plan_id: selectedPlanForSchedule.id,
       scheduled_date: scheduledDate,
-      estimated_hours: selectedPlanForSchedule.estimated_duration_hours
+      estimated_hours: selectedPlanForSchedule.estimated_duration_hours,
+      used_resources: selectedPlanForSchedule.required_resources,
     };
 
     const result = await createWorkOrder(workOrderData);
@@ -216,7 +240,7 @@ const MaintenancePlans = () => {
   };
 
   const getStatusColor = (active: boolean) => {
-    return active 
+    return active
       ? "bg-green-100 text-green-800 border-green-200"
       : "bg-gray-100 text-gray-800 border-gray-200";
   };
@@ -273,8 +297,8 @@ const MaintenancePlans = () => {
   if (showScheduler) {
     return (
       <div className="space-y-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => setShowScheduler(false)}
           className="mb-4"
         >
@@ -287,7 +311,6 @@ const MaintenancePlans = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -296,7 +319,15 @@ const MaintenancePlans = () => {
               <CardDescription>Gestão estratégica de ciclos de manutenção</CardDescription>
             </div>
             <div className="flex space-x-2">
-              <Button 
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => { if (value) setViewMode(value as any) }} aria-label="Visualização">
+                <ToggleGroupItem value="card" aria-label="Visualização em Card">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="Visualização em Lista">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <Button
                 variant="outline"
                 onClick={() => setShowScheduler(true)}
               >
@@ -320,9 +351,9 @@ const MaintenancePlans = () => {
                   <div className="grid grid-cols-2 gap-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="plan-name">Nome do Plano</Label>
-                      <Input 
-                        id="plan-name" 
-                        placeholder="Ex: Lubrificação Mensal" 
+                      <Input
+                        id="plan-name"
+                        placeholder="Ex: Lubrificação Mensal"
                         value={newPlan.name}
                         onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
                       />
@@ -370,7 +401,6 @@ const MaintenancePlans = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* NOVO CAMPO: Data de Término */}
                     <div className="space-y-2">
                       <Label htmlFor="end-date">Data de Término (Opcional)</Label>
                       <Input
@@ -380,7 +410,6 @@ const MaintenancePlans = () => {
                         onChange={(e) => setNewPlan({...newPlan, end_date: e.target.value})}
                       />
                     </div>
-                    {/* NOVO CAMPO: Dias da Semana */}
                     <div className="col-span-2 space-y-2">
                       <Label htmlFor="schedule-days-of-week">Dias da Semana (Para agendamentos diários)</Label>
                       <ToggleGroup
@@ -434,6 +463,44 @@ const MaintenancePlans = () => {
                         <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada.</p>
                       )}
                     </div>
+                    {/* NOVO: Seção para Recursos Necessários */}
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="resources">Recursos Necessários</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="new-resource-input"
+                          placeholder="Adicionar recurso (Ex: Óleo 5L, Filtro de ar)"
+                          value={newResourceInput}
+                          onChange={(e) => setNewResourceInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddResource();
+                            }
+                          }}
+                        />
+                        <Button type="button" onClick={handleAddResource}>Adicionar</Button>
+                      </div>
+                      <div className="space-y-1">
+                        {newPlan.required_resources.map((resource, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                            <span className="text-sm">{resource}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveResource(index)}
+                            >
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {newPlan.required_resources.length === 0 && (
+                        <p className="text-sm text-muted-foreground">Nenhum recurso adicionado.</p>
+                      )}
+                    </div>
+                    {/* FIM NOVO: Seção para Recursos Necessários */}
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -448,7 +515,6 @@ const MaintenancePlans = () => {
         </CardHeader>
       </Card>
 
-      {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -490,7 +556,6 @@ const MaintenancePlans = () => {
         </Card>
       </div>
 
-      {/* Plans Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all" className="flex items-center space-x-2">
@@ -521,6 +586,7 @@ const MaintenancePlans = () => {
               </CardContent>
             </Card>
           ) : (
+            viewMode === 'card' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {filteredPlans.map((plan) => (
                 <Card key={plan.id} className="hover:shadow-lg transition-shadow">
@@ -533,8 +599,8 @@ const MaintenancePlans = () => {
                         </CardDescription>
                       </div>
                       <div className="flex space-x-1">
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleToggleActive(plan)}
                         >
@@ -543,8 +609,8 @@ const MaintenancePlans = () => {
                         <Button variant="ghost" size="sm" onClick={() => handleEditPlan(plan)}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleDeletePlan(plan.id)}
                         >
@@ -560,12 +626,12 @@ const MaintenancePlans = () => {
                         {plan.active ? "Ativo" : "Inativo"}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Prioridade:</span>
                       <Badge className={getPriorityColor(plan.priority)}>
-                        {plan.priority === 'critical' ? 'Crítica' : 
-                         plan.priority === 'high' ? 'Alta' : 
+                        {plan.priority === 'critical' ? 'Crítica' :
+                         plan.priority === 'high' ? 'Alta' :
                          plan.priority === 'medium' ? 'Média' : 'Baixa'}
                       </Badge>
                     </div>
@@ -573,7 +639,7 @@ const MaintenancePlans = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Tipo:</span>
                       <Badge className={getTypeColor(plan.type)}>
-                        {plan.type === 'preventiva' ? 'Preventiva' : 
+                        {plan.type === 'preventiva' ? 'Preventiva' :
                          plan.type === 'preditiva' ? 'Preditiva' : 'Corretiva'}
                       </Badge>
                     </div>
@@ -587,7 +653,6 @@ const MaintenancePlans = () => {
                       </div>
                     )}
 
-                    {/* Exibir novos campos */}
                     {plan.end_date && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Data de Término:</span>
@@ -604,7 +669,7 @@ const MaintenancePlans = () => {
                         </span>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">Criado em:</span>
@@ -631,6 +696,17 @@ const MaintenancePlans = () => {
                       </div>
                     )}
 
+                    {plan.required_resources && plan.required_resources.length > 0 && (
+                      <div className="pt-3 border-t">
+                        <p className="text-sm text-gray-600 mb-1">Recursos Necessários:</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {plan.required_resources.map((resource, index) => (
+                            <li key={index}>{resource}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {plan.description && (
                       <div className="pt-3 border-t">
                         <p className="text-sm text-gray-600 mb-1">Descrição:</p>
@@ -639,36 +715,71 @@ const MaintenancePlans = () => {
                     )}
 
                     <div className="flex space-x-2 pt-3">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1"
                         onClick={() => handleSchedulePlan(plan)}
                       >
                         <Calendar className="w-4 h-4 mr-1" />
                         Agendar
                       </Button>
-
-                      {/* Botão do executar */}
-                      {/* <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1"
                         onClick={() => handleExecutePlan(plan)}
                       >
                         <Wrench className="w-4 h-4 mr-1" />
                         Executar
-                      </Button> */}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+          ) : (
+            <Card>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4">Nome do Plano</th>
+                      <th className="text-left py-3 px-4">Equipamento</th>
+                      <th className="text-left py-3 px-4">Tipo</th>
+                      <th className="text-left py-3 px-4">Frequência</th>
+                      <th className="text-center py-3 px-4">Status</th>
+                      <th className="text-center py-3 px-4">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {filteredPlans.map((plan) => (
+                    <tr key={plan.id} className="border-b">
+                      <td className="py-3 px-4">{plan.name}</td>
+                      <td className="py-3 px-4">{plan.equipment?.name || "N/A"}</td>
+                      <td className="py-3 px-4">{plan.type}</td>
+                      <td className="py-3 px-4">{plan.frequency ? getFrequencyLabel(plan.frequency) : 'N/A'}</td>
+                      <td className="text-center py-3 px-4">
+                      <Badge className={getStatusColor(plan.active)}>
+                        {plan.active ? "Ativo" : "Inativo"}
+                      </Badge>
+                      </td>
+                      <td className="text-center py-3 px-4">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditPlan(plan)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Schedule Dialog */}
       <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -680,7 +791,7 @@ const MaintenancePlans = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="scheduled-date">Data de Agendamento</Label>
-              <Input 
+              <Input
                 id="scheduled-date"
                 type="date"
                 value={scheduledDate}
@@ -700,7 +811,6 @@ const MaintenancePlans = () => {
         </DialogContent>
       </Dialog>
 
-      {/* MaintenancePlanEditDialog */}
       <MaintenancePlanEditDialog
         plan={selectedPlanForEdit}
         isOpen={!!selectedPlanForEdit}
