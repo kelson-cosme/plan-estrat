@@ -24,9 +24,10 @@ import { useViewMode } from "@/contexts/ViewModeContext";
 interface WorkOrdersProps {
   prefillData?: any | null;
   onPrefillHandled?: () => void;
+  onPrintOrder: (order: WorkOrder) => void; // Nova prop
 }
 
-const WorkOrders = ({ prefillData, onPrefillHandled }: WorkOrdersProps) => {
+const WorkOrders = ({ prefillData, onPrefillHandled, onPrintOrder }: WorkOrdersProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const { viewMode, setViewMode } = useViewMode();
@@ -37,7 +38,7 @@ const WorkOrders = ({ prefillData, onPrefillHandled }: WorkOrdersProps) => {
   const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
   const [rescheduleOrderId, setRescheduleOrderId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
-  const [orderToPrint, setOrderToPrint] = useState<WorkOrder | null>(null);
+  // const [orderToPrint, setOrderToPrint] = useState<WorkOrder | null>(null);
 
   const [newOrder, setNewOrder] = useState({
     title: "", type: "", description: "", priority: "medium", estimated_hours: "",
@@ -78,11 +79,7 @@ const WorkOrders = ({ prefillData, onPrefillHandled }: WorkOrdersProps) => {
   }, [prefillData, onPrefillHandled]);
 
   const handlePrint = (order: WorkOrder) => {
-    setOrderToPrint(order);
-    setTimeout(() => {
-      window.print();
-      setOrderToPrint(null);
-    }, 100);
+    onPrintOrder(order); // Chama a função do componente pai
   };
 
   const handleAddTask = () => { if (newTaskInput.trim() !== "") { setNewOrder(prev => ({ ...prev, tasks: [...prev.tasks, newTaskInput.trim()] })); setNewTaskInput(""); } };
@@ -145,7 +142,7 @@ const WorkOrders = ({ prefillData, onPrefillHandled }: WorkOrdersProps) => {
 
   return (
     <>
-      <div className="printable-area"><PrintableWorkOrder order={orderToPrint} /></div>
+      {/* <div className="printable-area"><PrintableWorkOrder order={orderToPrint} /></div> */}
       <div className="space-y-6">
         <Card>
             <CardHeader>

@@ -1,26 +1,41 @@
 @media print {
-    /* Esconde todos os elementos da página por padrão */
-    body * {
-      visibility: hidden;
-    }
-  
-    /* Deixa visível apenas a área de impressão e tudo o que estiver dentro dela */
-    .printable-area, .printable-area * {
-      visibility: visible;
-    }
-  
-    /* Garante que a área de impressão ocupe toda a página */
-    .printable-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-    }
-  
-    /* Remove sombras e fundos que não queremos na impressão */
-    .printable-area {
-      box-shadow: none;
-      border: none;
-    }
+  /* Define configurações básicas para a página impressa */
+  @page {
+    size: A4;
+    margin: 2cm;
   }
+
+  body {
+    background-color: white; /* Garante fundo branco */
+  }
+
+  /* Esconde todos os elementos que não devem ser impressos */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Faz a área de impressão ser o único elemento visível no corpo */
+  body > .printable-area {
+    display: block !important;
+    position: relative; /* Mudança para relative para melhor fluxo */
+  }
+  
+  /* Garante que o conteúdo dentro da área de impressão flua normalmente */
+  .printable-area {
+    width: 100%;
+    height: auto;
+    position: static;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Força a visibilidade de todos os filhos da área de impressão */
+  .printable-area * {
+    visibility: visible;
+    color: black !important; /* Força a cor do texto para preto */
+    background-color: transparent !important; /* Remove cores de fundo */
+    box-shadow: none !important;
+  }
+}
