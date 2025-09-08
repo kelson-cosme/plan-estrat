@@ -2,6 +2,11 @@
 
 Este é um sistema completo para gestão de manutenção industrial, desenvolvido para otimizar o controle e monitoramento de equipamentos, planos de manutenção e ordens de serviço. A aplicação oferece uma interface intuitiva para gerenciar todo o ciclo de manutenção, desde o planejamento até a execução e análise de relatórios.
 
+<img width="1361" height="630" alt="image" src="https://github.com/user-attachments/assets/60439a16-f923-4fe4-8a05-9a65c1e4b55d" />
+<img width="1350" height="632" alt="image" src="https://github.com/user-attachments/assets/7a2a95d2-5a84-483b-815f-f9e59f5bc4dc" />
+
+
+
 ## ✨ Funcionalidades Principais
 
 * **Dashboard Interativo:** Visualização rápida dos principais KPIs (Indicadores Chave de Desempenho), como status dos equipamentos, ordens de serviço e alertas críticos.
